@@ -11,7 +11,7 @@ class AttendanceEmployee extends Model
     const STATUS_HALF_DAY = 'Half Day';
     const STATUS_ABSENT = 'Absent';
     const STATUS_SINGLE_PUNCH = 'Single Punch In';
-    const REQUIRED_WORKING_HOURS = 8.5; // 8 hours 30 minutes in decimal
+    const REQUIRED_WORKING_HOURS = 5.0; // 5 hours in decimal
 
 
     protected $fillable = [

@@ -267,10 +267,7 @@ namespace App\Http\Controllers;
                 $workedHours = $workedSeconds / 3600;
                 
                 // Determine status
-                $clockInTime = strtotime($request->clock_in);
-                $halfDayThreshold = strtotime($date . ' 12:00:00');
-
-                if ($clockInTime >= $halfDayThreshold || $workedHours < AttendanceEmployee::REQUIRED_WORKING_HOURS) {
+                if ($workedHours < AttendanceEmployee::REQUIRED_WORKING_HOURS) {
                     $status = AttendanceEmployee::STATUS_HALF_DAY;
                 } else {
                     $status = AttendanceEmployee::STATUS_PRESENT;
@@ -517,10 +514,7 @@ namespace App\Http\Controllers;
                 $workedHours = $workedSeconds / 3600;
                 
                 // Determine status
-                $clockInTime = strtotime($clockIn);
-                $halfDayThreshold = strtotime($request->date . ' 12:00:00');
-
-                if ($clockInTime >= $halfDayThreshold || $workedHours < AttendanceEmployee::REQUIRED_WORKING_HOURS) {
+                if ($workedHours < AttendanceEmployee::REQUIRED_WORKING_HOURS) {
                     $status = AttendanceEmployee::STATUS_HALF_DAY;
                 } else {
                     $status = AttendanceEmployee::STATUS_PRESENT;

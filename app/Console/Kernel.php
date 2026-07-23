@@ -24,7 +24,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\MarkAttendanceUpToToday::class,
         \App\Console\Commands\MarkAttendanceTodayFromConfig::class,
         \App\Console\Commands\ConsumeCompOffForAbsences::class,
-
+        \App\Console\Commands\AutoCheckoutMissedPunches::class,
     ];
     
     protected function schedule(Schedule $schedule)
@@ -53,7 +53,10 @@ class Kernel extends ConsoleKernel
             ->timezone('Asia/Kolkata')
             ->withoutOverlapping();
 
-
+        // Run auto-checkout for missed punches every 5 minutes
+        $schedule->command('attendance:auto-checkout-missed')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
 
     }
     

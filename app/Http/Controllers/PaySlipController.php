@@ -909,6 +909,10 @@ class PaySlipController extends Controller
             // Present days are already counted in totalDays
         }
 
+        // Apply late mark deduction
+        $lateMarkLOP = \App\Services\PolicyEvaluationService::evaluateLateMarkDeduction($attendances);
+        $payableDays -= $lateMarkLOP;
+
         // Ensure payable days is not negative
         return max(0, round($payableDays, 2));
     }
