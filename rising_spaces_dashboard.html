@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rising Spaces — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F2F3F7;
+  --card:#FFFFFF;
+  --border:#E2E1DC;
+  --text:#1A1916;
+  --muted:#8A8880;
+  --accent:#C0392B;
+  --head-bg:#F7F6F3;
+  --green-fill:#EAF3DE;--green-text:#3B6D11;
+  --purple-fill:#EEEDFE;--purple-text:#3C3489;
+  --blue-fill:#E6F1FB;--blue-text:#0C447C;
+  --amber-fill:#FAEEDA;--amber-text:#633806;
+  --teal:#1B7A6B;
+  --proj:#5A8A2C;
+  --proj-plan:#5B4ACE;
+  --warn:#B85C00;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#141412;--card:#1F1E1B;--border:#333128;--text:#E8E6E0;--muted:#9A9890;
+    --accent:#E05A4A;--head-bg:#282725;
+    --green-fill:#173404;--green-text:#97C459;
+    --purple-fill:#26215C;--purple-text:#AFA9EC;
+    --blue-fill:#042C53;--blue-text:#85B7EB;
+    --amber-fill:#412402;--amber-text:#EF9F27;
+  }
+}
+
+body{background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--text);font-size:13px;min-height:100vh}
+
+/* ── Layout ── */
+.page{max-width:1200px;margin:0 auto;padding:14px 16px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 0 14px}
+.logo{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;color:var(--accent);letter-spacing:-.3px}
+.logo span{color:var(--muted);font-weight:400;font-size:15px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.quote-pill{background:var(--card);border:0.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--muted);font-style:italic}
+.date-filter select{background:var(--card);border:0.5px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;cursor:pointer}
+
+/* ── Metric Cards ── */
+.metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}
+.mc{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
+.mc.emp::before{background:#8FBC45}
+.mc.dep::before{background:#5B4ACE}
+.mc.lea::before{background:#B85C00}
+.mc.hol::before{background:#1B7A6B}
+.mc.pro::before{background:#1B6CB8}
+.mc.tic::before{background:var(--muted)}
+.mc-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.mc-value{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:600;color:var(--text);line-height:1}
+.mc-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:22px;opacity:.12;pointer-events:none}
+
+/* ── Grid ── */
+.dashboard-grid{display:grid;grid-template-columns:1fr 250px;gap:14px}
+.main{display:flex;flex-direction:column;gap:14px}
+.sidebar{display:flex;flex-direction:column;gap:14px}
+
+/* ── Card ── */
+.card{background:var(--card);border:0.5px solid var(--border);border-radius:10px;overflow:hidden}
+.card-head{padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.accent-bar{width:3px;height:18px;background:var(--accent);border-radius:2px;flex-shrink:0;margin-right:10px}
+.card-title{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center}
+.card-meta{font-size:11px;color:var(--muted)}
+
+/* ── Tables ── */
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--head-bg)}
+th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:9px 14px;text-align:left;border-bottom:0.5px solid var(--border)}
+th .sub{font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;display:block;margin-top:1px;opacity:.7}
+td{padding:9px 14px;font-size:12px;color:var(--text);border-bottom:0.5px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(128,128,128,.04)}
+.empty-row td{text-align:center;padding:26px;color:var(--muted);font-size:12px;font-style:italic}
+
+/* ── Avatar ── */
+.av{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;flex-shrink:0}
+.av-g{background:var(--green-fill);color:var(--green-text)}
+.av-p{background:var(--purple-fill);color:var(--purple-text)}
+.av-b{background:var(--blue-fill);color:var(--blue-text)}
+.av-a{background:var(--amber-fill);color:var(--amber-text)}
+.emp-cell{display:flex;align-items:center;gap:8px}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:500}
+.badge-green{background:var(--green-fill);color:var(--green-text)}
+.badge-red{background:#FCEBEB;color:#791F1F}
+.badge-amber{background:var(--amber-fill);color:var(--amber-text)}
+.badge-gray{background:#F1EFE8;color:#444441}
+.badge-live{background:#EAF3DE;color:#27500A;display:flex;align-items:center;gap:4px}
+.badge-live::before{content:'';width:6px;height:6px;border-radius:50%;background:#5A8A2C;flex-shrink:0}
+@media(prefers-color-scheme:dark){
+  .badge-red{background:#501313;color:#F09595}
+  .badge-gray{background:#2C2C2A;color:#B4B2A9}
+  .badge-live{background:#173404;color:#97C459}
+}
+
+/* ── Loc ── */
+.loc{font-size:11px;color:var(--muted)}
+
+/* ── Two col ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ── Project bar ── */
+.proj-bar{height:4px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden;min-width:70px}
+.proj-fill{height:100%;border-radius:2px}
+.proj-pct{font-size:10px;color:var(--muted);margin-top:2px}
+.pill-status{font-size:10px;display:inline-flex;align-items:center;gap:5px;color:var(--muted)}
+.pill-status::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%}
+.pill-status.active::before{background:#5A8A2C}
+.pill-status.planning::before{background:#5B4ACE}
+.pill-status.hold::before{background:#B85C00}
+.av-stack{display:flex}
+.av-stack .av{margin-left:-6px;border:2px solid var(--card)}
+.av-stack .av:first-child{margin-left:0}
+
+/* ── Calendar ── */
+.cal-nav{display:flex;align-items:center;gap:4px}
+.cal-btn{background:none;border:0.5px solid var(--border);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center;line-height:1}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:10px 12px 12px}
+.cal-dh{font-size:9px;text-align:center;color:var(--muted);font-weight:500;padding:3px 0;text-transform:uppercase}
+.cal-d{font-size:11px;text-align:center;padding:5px 2px;border-radius:5px;cursor:pointer;color:var(--text);user-select:none;position:relative}
+.cal-d:hover{background:var(--border)}
+.cal-d.today{background:var(--accent);color:#fff;font-weight:600}
+.cal-d.has-event::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--warn)}
+.cal-d.today.has-event::after{background:#fff}
+.cal-d.empty{pointer-events:none;color:transparent}
+
+/* ── Events ── */
+.event-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:0.5px solid var(--border)}
+.event-row:last-child{border-bottom:none}
+.event-date-box{width:34px;height:34px;border-radius:7px;background:var(--head-bg);border:0.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.event-date-box .day{font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;color:var(--text);line-height:1}
+.event-date-box .mon{font-size:8px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px}
+.event-info .ename{font-size:12px;font-weight:500;color:var(--text)}
+.event-info .etype{font-size:10px;color:var(--muted)}
+
+/* ── Notices ── */
+.notice-item{display:flex;gap:8px;padding:8px 14px;border-bottom:0.5px solid var(--border);align-items:flex-start}
+.notice-item:last-child{border-bottom:none}
+.notice-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.notice-text{font-size:11px;color:var(--text);line-height:1.4}
+.notice-date{font-size:10px;color:var(--muted);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo">Rising Spaces <span>Portal</span></div>
+    <div class="topbar-right">
+      <div class="quote-pill">✦ No quote for today!</div>
+      <div class="date-filter">
+        <select>
+          <option>Today</option>
+          <option>Yesterday</option>
+          <option>Custom Range</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metric Cards -->
+  <div class="metrics">
+    <div class="mc emp">
+      <div class="mc-label">Total Employees</div>
+      <div class="mc-value">32</div>
+      <div class="mc-icon">👥</div>
+    </div>
+    <div class="mc dep">
+      <div class="mc-label">Total Departments</div>
+      <div class="mc-value">14</div>
+      <div class="mc-icon">🏢</div>
+    </div>
+    <div class="mc lea">
+      <div class="mc-label">Total Leaves</div>
+      <div class="mc-value">4</div>
+      <div class="mc-icon">🏖</div>
+    </div>
+    <div class="mc hol">
+      <div class="mc-label">Total Holidays</div>
+      <div class="mc-value">32</div>
+      <div class="mc-icon">🗓</div>
+    </div>
+    <div class="mc pro">
+      <div class="mc-label">Total Projects</div>
+      <div class="mc-value">9</div>
+      <div class="mc-icon">📐</div>
+    </div>
+    <div class="mc tic">
+      <div class="mc-label">Total Tickets</div>
+      <div class="mc-value">0</div>
+      <div class="mc-icon">🎫</div>
+    </div>
+  </div>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid">
+
+    <!-- Main Column -->
+    <div class="main">
+
+      <!-- Today's Attendance -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><div class="accent-bar"></div>Today's Attendance</div>
+          <span class="badge badge-live">Live</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Employee Name</th>
+              <th>Punch-In Time</th>
+              <th>Punch-In Location<span class="sub">(Captured at)</span></th>
+              <th>Punch-Out Time</th>
+              <th>Punch-Out Location<span class="sub">(Captured at)</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="emp-cell"><div class="av av-g">RK</div>Rahul Kulkarni</div></td>
+              <td>09:02 AM</td>
+              <td><span class="loc">📍 Hinjawadi Phase 1</span></td>
+              <td>—</td>
+              <td><span class="loc">—</span></td>
+            </tr>
+            <tr>
+              <td><div class="emp-cell"><div class="av av-p">SP</div>Sneha Patil</div></td>
+              <td>09:18 AM</td>
+              <td><span class="loc">📍 Hinjawadi Phase 1</span></td>
+              <td>06:10 PM</td>
+              <td><span class="loc">📍 Hinjawadi Phase 1</span></td>
+            </tr>
+            <tr>
+              <td><div class="emp-cell"><div class="av av-b">AM</div>Arjun More</div></td>
+              <td>09:45 AM</td>
+              <td><span class="loc">📍 Hinjawadi Phase 1</span></td>
+              <td>—</td>
+              <td><span class="loc">—</span></td>
+            </tr>
+            <tr>
+              <td><div class="emp-cell"><div class="av av-a">PD</div>Priya Desai</div></td>
+              <td>10:05 AM</td>
+              <td><span class="loc">📍 Wakad</span></td>
+              <td>—</td>
+              <td><span class="loc">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Yet to Arrive + On Leave side by side -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><div class="accent-bar"></div>Yet To Arrive</div>
+          </div>
+          <table>
+            <thead><tr><th>Employee Name</th></tr></thead>
+            <tbody>
+              <tr><td><div class="emp-cell"><div class="av av-g">GS</div>Ganesh Shelke</div></td></tr>
+              <tr><td><div class="emp-cell"><div class="av av-p">AA</div>Anil Ambhure</div></td></tr>
+              <tr><td><div class="emp-cell"><div class="av av-b">DH</div>Dnyaneshwar Hajare Saumitar</div></td></tr>
+              <tr><td><div class="emp-cell"><div class="av av-a">SK</div>Shekhar Kagale</div></td></tr>
+              <tr><td><div class="emp-cell"><div class="av av-g">PB</div>Prachi Sureshrao Borkar</div></td></tr>
+              <tr><td><div class="emp-cell"><div class="av av-p">AD</div>Amol Uddhav Dhamale</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><div class="accent-bar"></div>On Leave / WeekOff</div>
+          </div>
+          <table>
+            <thead><tr><th>Employee Name</th></tr></thead>
+            <tbody>
+              <tr class="empty-row"><td>No employees on leave or week off today.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Project Details -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><div class="accent-bar"></div>Project Details</div>
+          <span class="card-meta">9 active projects</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Assigned To</th>
+              <th>Progress</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:500">Terra Casa</td>
+              <td style="color:var(--muted)">01 Jan 2026</td>
+              <td style="color:var(--muted)">30 Jun 2026</td>
+              <td>
+                <div class="av-stack">
+                  <div class="av av-g" title="Rahul Kulkarni">RK</div>
+                  <div class="av av-p" title="Sneha Patil">SP</div>
+                  <div class="av av-b" title="Arjun More">AM</div>
+                </div>
+              </td>
+              <td>
+                <div class="proj-bar"><div class="proj-fill" style="width:62%;background:#5A8A2C"></div></div>
+                <div class="proj-pct">62%</div>
+              </td>
+              <td><span class="pill-status active">Active</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500">Iris Woods</td>
+              <td style="color:var(--muted)">15 Feb 2026</td>
+              <td style="color:var(--muted)">31 Dec 2026</td>
+              <td>
+                <div class="av-stack">
+                  <div class="av av-a" title="Priya Desai">PD</div>
+                  <div class="av av-g" title="Mohit Joshi">MJ</div>
+                </div>
+              </td>
+              <td>
+                <div class="proj-bar"><div class="proj-fill" style="width:28%;background:#5B4ACE"></div></div>
+                <div class="proj-pct">28%</div>
+              </td>
+              <td><span class="pill-status planning">Planning</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500">Mount Ville</td>
+              <td style="color:var(--muted)">10 Mar 2026</td>
+              <td style="color:var(--muted)">15 Sep 2026</td>
+              <td>
+                <div class="av-stack">
+                  <div class="av av-p" title="Kavya Shinde">KS</div>
+                  <div class="av av-b" title="Vikram Bhosale">VB</div>
+                  <div class="av av-a" title="Neha Tiwari">NT</div>
+                </div>
+              </td>
+              <td>
+                <div class="proj-bar"><div class="proj-fill" style="width:45%;background:#5A8A2C"></div></div>
+                <div class="proj-pct">45%</div>
+              </td>
+              <td><span class="pill-status active">Active</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500">Emerald Heights</td>
+              <td style="color:var(--muted)">05 Apr 2026</td>
+              <td style="color:var(--muted)">28 Feb 2027</td>
+              <td>
+                <div class="av-stack">
+                  <div class="av av-g" title="Rahul Kulkarni">RK</div>
+                </div>
+              </td>
+              <td>
+                <div class="proj-bar"><div class="proj-fill" style="width:12%;background:#5B4ACE"></div></div>
+                <div class="proj-pct">12%</div>
+              </td>
+              <td><span class="pill-status planning">Planning</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- end main -->
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Calendar -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><div class="accent-bar"></div>May 2026</div>
+          <div class="cal-nav">
+            <button class="cal-btn">&#8249;</button>
+            <button class="cal-btn">&#8250;</button>
+          </div>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-dh">Su</div><div class="cal-dh">Mo</div><div class="cal-dh">Tu</div>
+          <div class="cal-dh">We</div><div class="cal-dh">Th</div><div class="cal-dh">Fr</div><div class="cal-dh">Sa</div>
+          <div class="cal-d empty">.</div><div class="cal-d empty">.</div><div class="cal-d empty">.</div>
+          <div class="cal-d empty">.</div><div class="cal-d">1</div><div class="cal-d">2</div><div class="cal-d">3</div>
+          <div class="cal-d today">4</div><div class="cal-d">5</div><div class="cal-d">6</div>
+          <div class="cal-d">7</div><div class="cal-d has-event">8</div><div class="cal-d">9</div><div class="cal-d">10</div>
+          <div class="cal-d">11</div><div class="cal-d">12</div><div class="cal-d">13</div>
+          <div class="cal-d">14</div><div class="cal-d">15</div><div class="cal-d">16</div><div class="cal-d">17</div>
+          <div class="cal-d has-event">18</div><div class="cal-d">19</div><div class="cal-d">20</div>
+          <div class="cal-d">21</div><div class="cal-d">22</div><div class="cal-d">23</div><div class="cal-d has-event">24</div>
+          <div class="cal-d">25</div><div class="cal-d">26</div><div class="cal-d">27</div>
+          <div class="cal-d">28</div><div class="cal-d">29</div><div class="cal-d">30</div><div class="cal-d">31</div>
+        </div>
+      </div>
+
+      <!-- Upcoming Events -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><div class="accent-bar"></div>Upcoming Events</div>
+          <span class="card-meta">May 2026</span>
+        </div>
+        <div class="event-row">
+          <div class="event-date-box"><span class="day">8</span><span class="mon">May</span></div>
+          <div class="event-info"><div class="ename">Rahul Kulkarni</div><div class="etype">🎂 Birthday</div></div>
+        </div>
+        <div class="event-row">
+          <div class="event-date-box"><span class="day">18</span><span class="mon">May</span></div>
+          <div class="event-info"><div class="ename">Sneha Patil</div><div class="etype">🎂 Birthday</div></div>
+        </div>
+        <div class="event-row">
+          <div class="event-date-box"><span class="day">24</span><span class="mon">May</span></div>
+          <div class="event-info"><div class="ename">Work Anniversary</div><div class="etype">⭐ Arjun More — 3 yrs</div></div>
+        </div>
+      </div>
+
+      <!-- Notices -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><div class="accent-bar"></div>Notices</div>
+        </div>
+        <div class="notice-item">
+          <div class="notice-dot" style="background:#8FBC45"></div>
+          <div>
+            <div class="notice-text">Q1 performance reviews due by 10 May</div>
+            <div class="notice-date">Posted: 01 May 2026</div>
+          </div>
+        </div>
+        <div class="notice-item">
+          <div class="notice-dot" style="background:#5B4ACE"></div>
+          <div>
+            <div class="notice-text">Office closed — Maharashtra Day, 1 May 2026</div>
+            <div class="notice-date">Posted: 25 Apr 2026</div>
+          </div>
+        </div>
+        <div class="notice-item">
+          <div class="notice-dot" style="background:var(--warn)"></div>
+          <div>
+            <div class="notice-text">New HR policy document shared on portal</div>
+            <div class="notice-date">Posted: 28 Apr 2026</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end sidebar -->
+  </div><!-- end dashboard-grid -->
+</div><!-- end page -->
+</body>
+</html>
