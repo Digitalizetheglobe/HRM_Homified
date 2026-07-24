@@ -540,7 +540,7 @@
             <?php endif; ?>
 
             <!-- Project Management -->
-            <?php if($userType === 'company' || $userType === 'hr'): ?>
+            <!-- <?php if($userType === 'company' || $userType === 'hr'): ?>
                 <li class="dash-item <?php echo e(Request::segment(1) == 'projects' ? 'active' : ''); ?>">
                     <a href="<?php echo e(route('projects.index')); ?>" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                         <span class="dash-micon shadow-none" style="background: none;">
@@ -558,10 +558,10 @@
                         <span class="dash-mtext flex-grow"><?php echo e(__('Units')); ?></span>
                     </a>
                 </li>
-            <?php endif; ?>
+            <?php endif; ?> -->
 
             <!-- Enquiry -->
-            <?php if(Gate::check('Manage TimeSheet')): ?>
+            <!-- <?php if(Gate::check('Manage TimeSheet')): ?>
             <li class="dash-item <?php echo e(Request::segment(1) == 'timesheet' ? 'active' : ''); ?>">
                 <a href="<?php echo e(route('timesheet.index')); ?>" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                     <span class="dash-micon shadow-none" style="background: none;">
@@ -570,10 +570,10 @@
                     <span class="dash-mtext flex-grow"><?php echo e(__('Enquiry')); ?></span>
                 </a>
             </li>
-            <?php endif; ?>
+            <?php endif; ?> -->
 
             <!-- Booking -->
-            <li class="dash-item dash-hasmenu <?php echo e(Request::segment(1) == 'booking' ? 'dash-trigger active' : ''); ?>">
+            <!-- <li class="dash-item dash-hasmenu <?php echo e(Request::segment(1) == 'booking' ? 'dash-trigger active' : ''); ?>">
                 <a href="#!" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                     <span class="dash-micon shadow-none" style="background: none;">
                         <i class="ti ti-calendar-event text-white text-[22px]"></i>
@@ -601,7 +601,7 @@
                         </a>
                     </li>
                 </ul>
-            </li>
+            </li> -->
 
             <!-- Recruitment -->
             <?php if(Gate::check('Manage Job') || Gate::check('Manage Job Application') || Gate::check('Manage Job OnBoard') || Gate::check('Manage Custom Question') || Gate::check('Manage Interview Schedule') || Gate::check('Manage Career')): ?>
