@@ -1,15 +1,96 @@
-cd /home/hrm.homifiedconsultants.com/public_html
+Laravel HRM Deployment Guide (CyberPanel + OpenLiteSpeed)
 
-git status
-git pull origin main
+Developer PC
 
-/usr/local/lsws/lsphp82/bin/php /usr/bin/composer install --no-dev --optimize-autoloader
+1.  Latest code GitHub var push kara.
 
-php artisan optimize:clear
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+    git add .
+    git commit -m "Your changes"
+    git push origin main
 
-chown -R hrmho2861:nobody storage bootstrap/cache
-chmod -R 775 storage bootstrap/cache
+------------------------------------------------------------------------
 
+
+    cd /home/hrm.homifiedconsultants.com/public_html
+
+------------------------------------------------------------------------
+
+1. Latest Code Pull
+
+    git pull origin main
+
+------------------------------------------------------------------------
+
+2. Composer (ONLY if composer.json or composer.lock changed)
+
+Use PHP 8.2:
+
+    /usr/local/lsws/lsphp82/bin/php /usr/bin/composer install --no-dev --optimize-autoloader
+
+If composer files did NOT change, skip this step.
+
+-----------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+4. Clear & Rebuild Laravel Cache
+
+    php artisan optimize:clear
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+
+------------------------------------------------------------------------
+
+5. Fix Permissions (Only if needed)
+
+    chown -R hrmho2861:hrmho2861 storage bootstrap/cache
+    chmod -R 775 storage bootstrap/cache
+
+------------------------------------------------------------------------
+
+6. Restart OpenLiteSpeed (Optional but safe)
+
+    systemctl restart lsws
+
+------------------------------------------------------------------------
+
+7. Verify
+
+Open:
+
+https://hrm.homifiedconsultants.com
+
+Check: - Login page opens - No 500 error - New feature visible -
+Storage/uploads working
+
+------------------------------------------------------------------------
+
+Quick Deployment
+
+Normal PHP changes:
+
+git pull origin main php artisan optimize:clear php artisan config:cache
+systemctl restart lsws
+
+------------------------------------------------------------------------
+
+Composer changed:
+
+git pull origin main /usr/local/lsws/lsphp82/bin/php /usr/bin/composer
+install –no-dev –optimize-autoloader php artisan optimize:clear
+systemctl restart lsws
+
+------------------------------------------------------------------------
+
+Migration added:
+
+git pull origin main /usr/local/lsws/lsphp82/bin/php /usr/bin/composer
+install –no-dev –optimize-autoloader php artisan migrate –force php
+artisan optimize:clear systemctl restart lsws
+
+------------------------------------------------------------------------
+
+Important: - Never edit .env during normal deployment. - Take database
+backup before major updates. - If git pull reports conflicts, stop and
+resolve before continuing.

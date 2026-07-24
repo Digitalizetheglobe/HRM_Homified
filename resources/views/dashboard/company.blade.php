@@ -591,7 +591,7 @@
                             </div>
                         </div>
 
-                        <div class="col-xl-12">
+                        <!-- <div class="col-xl-12">
                             <div class="card">
                                 <div class="card-header card-body table-border-style">
                                     <h5 style="font-size:20px;color:black">{{ __('Project Details') }}</h5>
@@ -647,7 +647,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
 
                         <div class="col-xl-12">
                             <div class="card">
