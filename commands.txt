@@ -3,8 +3,7 @@ cd /home/hrm.homifiedconsultants.com/public_html
 git status
 git pull origin main
 
-composer install --no-dev --optimize-autoloader
-
+/usr/local/lsws/lsphp82/bin/php /usr/bin/composer install --no-dev --optimize-autoloader
 
 php artisan optimize:clear
 php artisan config:cache
