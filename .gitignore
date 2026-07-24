@@ -1,3 +1,20 @@
-/.idea
-/.vscode
-/vendor/srmklive
+# Environment
+.env
+
+# Dependencies
+/vendor
+/node_modules
+
+# Runtime files
+/storage/logs/*
+!/storage/logs/.gitignore
+
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+
+!/storage/framework/cache/.gitignore
+!/storage/framework/sessions/.gitignore
+!/storage/framework/testing/.gitignore
+!/storage/framework/views/.gitignore
