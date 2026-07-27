@@ -31,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        \Illuminate\Support\Facades\URL::forceScheme('https');
+
         AttendanceEmployee::observe(AttendanceEmployeeObserver::class);
 
         View::composer('partial.Admin.menu', function ($view) {
