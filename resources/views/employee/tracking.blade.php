@@ -209,10 +209,10 @@
             // Initialize Leaflet Map
             const map = L.map('map').setView(defaultCenter, 13);
 
-            // Add OpenStreetMap Tile Layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
+            // Add Google Maps Tile Layer
+            L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 22,
+                attribution: '© Google Maps'
             }).addTo(map);
 
             // Keep track of layers
@@ -270,8 +270,39 @@
                         }
                         markersGroup.clearLayers();
 
-                        const route = response.route;
+                        let route = response.route;
                         const latest = response.current_location;
+
+                        // Clean GPS spikes/drift and stationary jitter from the route
+                        if (route && route.length > 1) {
+                            const cleanRoute = [];
+                            for (let i = 0; i < route.length; i++) {
+                                if (i === 0) {
+                                    cleanRoute.push(route[i]);
+                                    continue;
+                                }
+                                const prev = cleanRoute[cleanRoute.length - 1];
+                                const curr = route[i];
+                                const distance = map.distance([prev.lat, prev.lng], [curr.lat, curr.lng]);
+                                
+                                // 1. Filter out stationary jitter (movements < 15 meters while sitting in one place)
+                                if (distance < 15) {
+                                    continue;
+                                }
+                                
+                                // 2. Detect single-point spike: sudden jump > 150m, but next point returns back within 50m of the previous
+                                if (distance > 150 && i < route.length - 1) {
+                                    const next = route[i + 1];
+                                    const distancePrevToNext = map.distance([prev.lat, prev.lng], [next.lat, next.lng]);
+                                    if (distancePrevToNext < 50) {
+                                        console.log("Filtered out GPS spike:", curr);
+                                        continue;
+                                    }
+                                }
+                                cleanRoute.push(curr);
+                            }
+                            route = cleanRoute;
+                        }
 
                         // 1. Draw Route Polyline
                         if (route && route.length > 0) {
