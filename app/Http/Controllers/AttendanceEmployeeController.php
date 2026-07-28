@@ -633,9 +633,16 @@ namespace App\Http\Controllers;
             if (\Auth::user()->type == 'company' || \Auth::user()->can('attendance.marked.delete.all')) {
                 $attendance = AttendanceEmployee::where('id', $id)->first();
 
-                $attendance->delete();
+                if ($attendance) {
+                    // Delete associated location logs for this employee on this date
+                    \App\Models\EmployeeLocationLog::where('employee_id', $attendance->employee_id)
+                        ->whereDate('pinged_at', $attendance->date)
+                        ->delete();
 
-                return redirect()->route('attendanceemployee.index')->with('success', __('Attendance successfully deleted.'));
+                    $attendance->delete();
+                }
+
+                return redirect()->route('attendanceemployee.index')->with('success', __('Attendance and associated location tracking data successfully deleted.'));
             } else {
                 return redirect()->back()->with('error', __('Permission denied.'));
             }

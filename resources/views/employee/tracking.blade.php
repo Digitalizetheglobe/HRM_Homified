@@ -290,11 +290,11 @@
                                     continue;
                                 }
                                 
-                                // 2. Detect single-point spike: sudden jump > 150m, but next point returns back within 50m of the previous
-                                if (distance > 150 && i < route.length - 1) {
+                                // 2. Detect single-point spike: sudden jump > 40m, but next point returns back within 20m of the previous
+                                if (distance > 40 && i < route.length - 1) {
                                     const next = route[i + 1];
                                     const distancePrevToNext = map.distance([prev.lat, prev.lng], [next.lat, next.lng]);
-                                    if (distancePrevToNext < 50) {
+                                    if (distancePrevToNext < 20) {
                                         console.log("Filtered out GPS spike:", curr);
                                         continue;
                                     }
