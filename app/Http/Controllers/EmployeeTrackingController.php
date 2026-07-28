@@ -20,7 +20,7 @@ class EmployeeTrackingController extends Controller
     public function index(Request $request)
     {
         // Restrict to admins and company users only
-        if (Auth::user()->type !== 'company' && Auth::user()->type !== 'hr') {
+        if (Auth::user()->type !== 'company' && Auth::user()->type !== 'hr' && !\Auth::user()->can('attendance.employee_tracking.view.all')) {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
 
@@ -114,7 +114,7 @@ class EmployeeTrackingController extends Controller
      */
     public function getTrackingData(Request $request)
     {
-        if (Auth::user()->type !== 'company' && Auth::user()->type !== 'hr') {
+        if (Auth::user()->type !== 'company' && Auth::user()->type !== 'hr' && !\Auth::user()->can('attendance.employee_tracking.view.all')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access.'

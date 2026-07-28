@@ -40,9 +40,6 @@ If composer files did NOT change, skip this step.
     php artisan route:cache
     php artisan view:cache
 
-------------------------------------------------------------------------
-
-5. Fix Permissions (Only if needed)
 
     chown -R hrmho2861:hrmho2861 storage bootstrap/cache
     chmod -R 775 storage bootstrap/cache

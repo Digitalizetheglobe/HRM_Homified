@@ -107,6 +107,14 @@ return [
                 'supports_data_scope' => false,
             ],
         ],
+        'Employee Tracking' => [
+            'Employees Tracking' => [
+                'actions' => [
+                    'Page Access' => 'attendance.employee_tracking.view.all',
+                ],
+                'supports_data_scope' => false,
+            ],
+        ],
     ],
     'Leave' => [
         'Manage Leave' => [
