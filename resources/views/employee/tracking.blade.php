@@ -217,6 +217,7 @@
 
             // Keep track of layers
             let routeLine = null;
+            let routeLineBG = null;
             let markersGroup = L.featureGroup().addTo(map);
 
             // Fetch location data on change/click
@@ -268,6 +269,10 @@
                             map.removeLayer(routeLine);
                             routeLine = null;
                         }
+                        if (routeLineBG) {
+                            map.removeLayer(routeLineBG);
+                            routeLineBG = null;
+                        }
                         markersGroup.clearLayers();
 
                         let route = response.route;
@@ -304,14 +309,28 @@
                             route = cleanRoute;
                         }
 
-                        // 1. Draw Route Polyline (Following actual roads using OSRM Routing API)
+                        // 1. Draw Route Polyline (Following actual roads using OSRM Match & Route APIs)
                         if (route && route.length > 0) {
                             const drawPolyline = (latlngs) => {
                                 if (routeLine) map.removeLayer(routeLine);
+                                if (routeLineBG) map.removeLayer(routeLineBG);
+
+                                // 1a. Draw background polyline (glow/shadow effect)
+                                routeLineBG = L.polyline(latlngs, {
+                                    color: '#4285F4',
+                                    weight: 12,
+                                    opacity: 0.35,
+                                    lineCap: 'round',
+                                    lineJoin: 'round'
+                                }).addTo(map);
+
+                                // 1b. Draw foreground polyline (Google Maps active blue)
                                 routeLine = L.polyline(latlngs, {
-                                    color: 'var(--color-customColor, #c9a227)',
-                                    weight: 5,
-                                    opacity: 0.85
+                                    color: '#1a73e8',
+                                    weight: 6,
+                                    opacity: 0.95,
+                                    lineCap: 'round',
+                                    lineJoin: 'round'
                                 }).addTo(map);
                             };
 
@@ -327,16 +346,28 @@
                                 }
 
                                 const coordsString = sampledRoute.map(p => `${p.lng},${p.lat}`).join(';');
-                                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+                                
+                                // OSRM Match API is optimized to fit GPS tracks onto roads
+                                const matchUrl = `https://router.project-osrm.org/match/v1/driving/${coordsString}?overview=full&geometries=geojson`;
 
-                                $.getJSON(osrmUrl, function(data) {
-                                    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                                        const routeCoords = data.routes[0].geometry.coordinates;
+                                $.getJSON(matchUrl, function(data) {
+                                    if (data.code === 'Ok' && data.matchings && data.matchings.length > 0) {
+                                        const routeCoords = data.matchings[0].geometry.coordinates;
                                         const snappedLatlngs = routeCoords.map(coord => [coord[1], coord[0]]);
-                                        drawPolyline(snappedLatlngs); // Update with snapped road route
+                                        drawPolyline(snappedLatlngs); // Snapped successfully via Match
+                                    } else {
+                                        // Fallback to OSRM Route API if Match returns no route
+                                        const routeUrl = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+                                        $.getJSON(routeUrl, function(routeData) {
+                                            if (routeData.code === 'Ok' && routeData.routes && routeData.routes.length > 0) {
+                                                const routeCoords = routeData.routes[0].geometry.coordinates;
+                                                const snappedLatlngs = routeCoords.map(coord => [coord[1], coord[0]]);
+                                                drawPolyline(snappedLatlngs); // Snapped successfully via Route
+                                            }
+                                        });
                                     }
                                 }).fail(function() {
-                                    console.warn("OSRM routing failed. Falling back to straight lines.");
+                                    console.warn("OSRM routing servers failed. Falling back to straight lines.");
                                 });
                             }
 
