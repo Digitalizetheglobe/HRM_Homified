@@ -304,16 +304,41 @@
                             route = cleanRoute;
                         }
 
-                        // 1. Draw Route Polyline
+                        // 1. Draw Route Polyline (Following actual roads using OSRM Routing API)
                         if (route && route.length > 0) {
-                            const latlngs = route.map(p => [p.lat, p.lng]);
-                            
-                            // Draw polyline connecting points
-                            routeLine = L.polyline(latlngs, {
-                                color: 'var(--color-customColor, #c9a227)',
-                                weight: 4,
-                                opacity: 0.8
-                            }).addTo(map);
+                            const drawPolyline = (latlngs) => {
+                                if (routeLine) map.removeLayer(routeLine);
+                                routeLine = L.polyline(latlngs, {
+                                    color: 'var(--color-customColor, #c9a227)',
+                                    weight: 5,
+                                    opacity: 0.85
+                                }).addTo(map);
+                            };
+
+                            const defaultLatlngs = route.map(p => [p.lat, p.lng]);
+                            drawPolyline(defaultLatlngs); // Draw straight lines immediately as fallback
+
+                            if (route.length > 1) {
+                                // Downsample route if too long for OSRM URL limit (max 80 coordinates)
+                                let sampledRoute = route;
+                                if (route.length > 80) {
+                                    const step = Math.ceil(route.length / 80);
+                                    sampledRoute = route.filter((_, idx) => idx % step === 0 || idx === route.length - 1);
+                                }
+
+                                const coordsString = sampledRoute.map(p => `${p.lng},${p.lat}`).join(';');
+                                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+
+                                $.getJSON(osrmUrl, function(data) {
+                                    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                                        const routeCoords = data.routes[0].geometry.coordinates;
+                                        const snappedLatlngs = routeCoords.map(coord => [coord[1], coord[0]]);
+                                        drawPolyline(snappedLatlngs); // Update with snapped road route
+                                    }
+                                }).fail(function() {
+                                    console.warn("OSRM routing failed. Falling back to straight lines.");
+                                });
+                            }
 
                             // Draw start point marker
                             const start = route[0];

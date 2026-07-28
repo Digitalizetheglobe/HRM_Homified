@@ -467,11 +467,7 @@ Route::middleware(['auth'])->group(function () {
         // Delete timesheet
         Route::delete('/timesheet/{timeSheet}', [TimeSheetController::class, 'destroy'])->name('timesheet.destroy');
 
-        // show timesheet
-        // If you want this accessible to all authenticated users
-        Route::get('timesheet/{timeSheet}', [TimeSheetController::class, 'show'])
-            ->middleware('auth')
-            ->name('timesheet.show');
+
         // In your routes file
         Route::get('/get-projects-by-employee/{employeeId}', [TimeSheetController::class, 'getProjectsByEmployee']);
 
@@ -737,7 +733,7 @@ Route::group(['middleware' => ['verified']], function () {
             'XSS',
         ]
     );
-    Route::get('employee/{id}/edit', [EmployeeController::class, 'edit'])->name('employee.edit');
+
     Route::get('employee-export/modal', [EmployeeController::class, 'exportModal'])->name('employee.export_modal');
     Route::post('employee-export', [EmployeeController::class, 'export'])->name('employee.export');
 
@@ -750,7 +746,7 @@ Route::group(['middleware' => ['verified']], function () {
         ]
     );
 
-    Route::put('employee/{employee}', [EmployeeController::class, 'update'])->name('employee.update');
+
     Route::post('employee/{id}/resend-email', [EmployeeController::class, 'resendEmail'])->name('employee.resend_email')->middleware(['auth', 'XSS']);
 
 
@@ -1434,7 +1430,7 @@ Route::group(['middleware' => ['verified']], function () {
                 Route::post('/store', [BookingFormController::class, 'store'])->name('store');
                 Route::get('/show/{bookingForm}', [BookingFormController::class, 'show'])->name('show');
                 Route::get('/edit/{id}', [BookingFormController::class, 'edit'])->name('edit');
-                Route::put('/update/{bookingForm}', [BookingFormController::class, 'update'])->name('update');
+                Route::put('/update/{bookingForm}', [BookingFormController::class, 'update'])->name('update_legacy');
                 Route::delete('/destroy/{bookingForm}', [BookingFormController::class, 'destroy'])->name('destroy');
 
                 
@@ -1712,7 +1708,7 @@ Route::group(['middleware' => ['verified']], function () {
         Route::post('company-policy/acknowledge/{id}', [CompanyPolicyController::class, 'acknowledge'])->name('company-policy.employee.acknowledge')->middleware(['auth', 'XSS']);
     });
 
-    Route::resource('notification-templates', NotificationTemplatesController::class)->middleware(
+    Route::resource('notification-templates', NotificationTemplatesController::class)->except(['index'])->middleware(
         [
             'auth',
             'XSS',
@@ -2014,7 +2010,7 @@ Route::group(['middleware' => ['verified']], function () {
     );
 
 
-    Route::resource('interview-schedule', InterviewScheduleController::class)->middleware(
+    Route::resource('interview-schedule', InterviewScheduleController::class)->except(['create'])->middleware(
         [
             'auth',
             'XSS',
@@ -2330,9 +2326,9 @@ Route::group(['middleware' => ['verified']], function () {
 
     Route::post('/leave/markAsRead', [LeaveController::class, 'markAsRead'])->name('leave.markAsRead');
     Route::post('/leave/markAllAsRead', [LeaveController::class, 'markAllAsRead'])->name('leave.markAllAsRead');
-    Route::get('/leave/action/{id}/{status}', [LeaveController::class, 'action'])->name('leave.action');
+    Route::get('/leave/action/{id}/{status}', [LeaveController::class, 'action'])->name('leave.action_alternate');
     Route::get('/leave', [LeaveController::class, 'index'])->name('leave.index');
-    Route::get('/leave-notifications', [LeaveController::class, 'getLeaveNotifications'])->name('leave.notifications');
+    Route::get('/leave-notifications', [LeaveController::class, 'getLeaveNotifications'])->name('leave.notifications_alternate');
 
     Route::get('/get-comp-off-balance/{employeeId}', [LeaveController::class, 'getCompOffBalance'])->name('get.comp.off.balance');
     Route::get('/hrm/get-monthly-balance/{employeeId}', [LeaveController::class, 'getMonthlyBalance'])->name('get.monthly.balance');
