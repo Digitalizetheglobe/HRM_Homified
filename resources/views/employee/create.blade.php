@@ -10,11 +10,138 @@
     <li class="breadcrumb-item">{{ __('Create Employee') }}</li>
 @endsection
 
-@push('css')
+@push('css-page')
     <style>
-        .cursor-pointer {
+        /* =============================================
+           HRM Employee Create – Premium UI
+           Primary colour: var(--color-customColor)
+        ============================================= */
+        .cursor-pointer { cursor: pointer; }
+
+        /* ── Card ──────────────────────────────────── */
+        .card {
+            border-radius: 12px !important;
+            border: 1px solid #e5e7eb !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+            overflow: hidden;
+        }
+        .card .card-body { padding: 20px !important; }
+
+        /* ── Card Header ────────────────────────────── */
+        .card .card-header {
+            border-left: 4px solid var(--color-customColor, #c9a227);
+            background: linear-gradient(to right, rgba(201,162,39,0.08) 0%, #fff 55%);
+            padding: 12px 18px;
+            border-bottom: 1px solid #ebebeb;
+        }
+        .card .card-header h5,
+        .card .card-header h6 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            margin-bottom: 0;
+            font-size: 0.88rem;
+            color: #1a202c;
+        }
+        .card .card-header .ti {
+            color: var(--color-customColor, #c9a227);
+            font-size: 1rem;
+        }
+
+        /* ── Form Labels ────────────────────────────── */
+        .form-label {
+            font-weight: 500;
+            font-size: 0.79rem;
+            letter-spacing: 0.2px;
+            color: #4b5563;
+            margin-bottom: 4px;
+            display: inline-block;
+        }
+
+        /* ── Form Controls ──────────────────────────── */
+        .form-control, select.form-control {
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            font-size: 0.875rem !important;
+            padding: 8px 11px !important;
+            background-color: #f9fafb !important;
+            color: #374151 !important;
+            transition: border-color 0.18s, box-shadow 0.18s;
+            height: auto !important;
+        }
+        .form-control:focus, select.form-control:focus {
+            border-color: var(--color-customColor, #c9a227) !important;
+            background-color: #fff !important;
+            box-shadow: 0 0 0 3px rgba(201,162,39,0.13) !important;
+        }
+        textarea.form-control { min-height: 88px; resize: vertical; }
+
+
+
+        /* ── Upload Button & Previews ───────────────── */
+        .choose-files {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            display: block !important;
+        }
+        .choose-files > label {
+            display: block;
+            width: 100%;
+            margin: 0;
             cursor: pointer;
         }
+        .choose-files div {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        .btn.document, .bg-primary.document {
+            border-radius: 8px !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            padding: 9px 14px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            background: var(--color-customColor, #c9a227) !important;
+            color: #fff !important;
+            border: none !important;
+            white-space: nowrap !important;
+        }
+        input[type="file"].file { display: none !important; }
+
+        .document-preview-img {
+            max-height: 120px !important;
+            width: auto !important;
+            object-fit: contain;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-top: 8px;
+            transition: transform 0.18s ease-in-out;
+        }
+        .document-preview-img:hover {
+            transform: scale(1.03);
+        }
+
+        /* ── Submit Bar ─────────────────────────────── */
+        .form-submit-bar {
+            border-top: 1px solid #e5e7eb;
+            padding: 16px 0;
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .form-submit-bar .btn { min-width: 160px; }
     </style>
 @endpush
 
@@ -38,11 +165,11 @@
                     <!-- Personal Details Section -->
                     <div class="col-md-6">
                         <div class="card em-card">
-                            <div class="card-header">
-                                <h5>{{ __('Personal Detail') }}</h5>
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <h5><i class="ti ti-user-circle"></i>{{ __('Personal Detail') }}</h5>
                             </div>
                             <div class="card-body">
-                                <div class="row">
+                                <div class="row g-3">
                                     <div class="form-group col-md-4">
                                         {!! Form::label('name', __('First Name'), ['class' => 'form-label']) !!}<span class="text-danger pl-1">*</span>
                                         {!! Form::text('name', old('name'), [
@@ -172,7 +299,7 @@
                                     <div class="form-group col-md-6">
                                         {!! Form::label('password', __('Password'), ['class' => 'form-label']) !!}<span class="text-danger pl-1">*</span>
                                         <div class="alert alert-info mb-2" style="padding: 8px 12px; font-size: 13px;">
-                                            <i class="ti ti-info-circle"></i> <strong>{{ __('Default Password') }}:</strong> RSPL@123
+                                            <i class="ti ti-info-circle"></i> <strong>{{ __('Default Password') }}:</strong> Homified@123
                                         </div>
                                         <div class="position-relative">
                                             {!! Form::password('password', [
@@ -214,11 +341,11 @@
                     <!-- Company Details Section -->
                     <div class="col-md-6">
                         <div class="card em-card">
-                            <div class="card-header">
-                                <h5>{{ __('Company Detail') }}</h5>
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <h5><i class="ti ti-building"></i>{{ __('Company Detail') }}</h5>
                             </div>
                             <div class="card-body employee-detail-create-body">
-                                <div class="row">
+                                <div class="row g-3">
                                     @csrf
                                     <div class="form-group">
                                         {!! Form::label('employee_id', __('Employee ID'), ['class' => 'form-label']) !!}
@@ -268,18 +395,22 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
                    
                         <!-- Experience Section -->
                         <!-- Experience Section -->
                         <div class="col-md-12">
                             <div class="card md-12">
-                                <div class="card-header">
-                                    <h5>{{ __('Total Experience') }}</h5>
+                                <div class="card-header d-flex align-items-center justify-content-between">
+                                    <h5><i class="ti ti-briefcase"></i>{{ __('Total Experience') }}</h5>
+                                    <button type="button" class="btn btn-primary btn-sm add-experience-row">
+                                        <i class="ti ti-plus me-1"></i>{{ __('Add Experience') }}
+                                    </button>
                                    
                                 </div>
                                 <div class="card-body employee-detail-create-body">
                                     <div id="experience-details-container">
-                                        <div class="row experience-detail-row mb-3">
+                                        <div class="row g-3 experience-detail-row">
                                             <div class="form-group col-md-6">
                                                 {!! Form::label('experience[0][previous_company_name]', __('Previous Company Name'), ['class' => 'form-label']) !!}
                                                 {!! Form::text('experience[0][previous_company_name]', null, [
@@ -322,42 +453,46 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
                 <!-- Documents and Education Section -->
                 <div class="row">
                     <!-- Documents Section -->
                     <div class="col-md-6">
                         <div class="card em-card">
-                            <div class="card-header">
-                                <h5>{{ __('Document') }}</h5>
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <h5><i class="ti ti-files"></i>{{ __('Document') }}</h5>
                             </div>
                             <div class="card-body employee-detail-create-body">
                                 @foreach ($documents as $key => $document)
-                                    <div class="row mb-3 pb-3 border-bottom border-light">
+                                    <div class="row mb-3 pb-3 border-bottom border-light align-items-center">
                                         <div class="col-12 col-sm-4 mb-2 mb-sm-0">
-                                            <label for="document" class="form-label mb-0">{{ $document->name }} @if ($document->is_required == 1)
+                                            <label for="document" class="form-label mb-0">
+                                                {{ $document->name }} 
+                                                @if ($document->is_required == 1)
                                                     <span class="text-danger">*</span>
                                                 @endif
                                             </label>
                                         </div>
                                         <div class="col-12 col-sm-8">
                                             <input type="hidden" name="emp_doc_id[{{ $document->id }}]" value="{{ $document->id }}">
-                                            <div class="choose-files">
-                                                <label for="document[{{ $document->id }}]" class="w-100">
-                                                    <div class="bg-primary document cursor-pointer text-center"> 
-                                                        <i class="ti ti-upload me-1"></i>{{ __('Choose file here') }}
-                                                    </div>
-                                                    <input type="file"
-                                                        class="form-control file d-none @error('document') is-invalid @enderror"
-                                                        @if ($document->is_required == 1) required @endif
-                                                        name="document[{{ $document->id }}]"
-                                                        id="document[{{ $document->id }}]"
-                                                        data-filename="{{ $document->id . '_filename' }}"
-                                                        onchange="var img = document.getElementById('{{ 'blah' . $key }}'); img.src = window.URL.createObjectURL(this.files[0]); img.style.display = 'block';">
-                                                </label>
-                                                <div class="text-center mt-2">
-                                                    <img id="{{ 'blah' . $key }}" src="" class="img-fluid rounded shadow-sm" style="max-width: 200px; display: none;" />
+                                            <div class="d-flex flex-column gap-2 mt-0">
+                                                <div class="choose-files w-100 m-0">
+                                                    <label for="document[{{ $document->id }}]" class="w-100 mb-0">
+                                                        <div class="btn btn-sm btn-primary document cursor-pointer w-100 m-0">
+                                                            <i class="ti ti-upload me-1"></i>{{ __('Choose file here') }}
+                                                        </div>
+                                                        <input type="file" 
+                                                            class="form-control file d-none @error('document') is-invalid @enderror"
+                                                            @if ($document->is_required == 1) required @endif
+                                                            name="document[{{ $document->id }}]"
+                                                            id="document[{{ $document->id }}]"
+                                                            data-filename="{{ $document->id . '_filename' }}"
+                                                            onchange="var img = document.getElementById('{{ 'blah' . $key }}'); img.src = window.URL.createObjectURL(this.files[0]); img.style.display = 'inline-block';"
+                                                            {{ isset($readonly) && $readonly ? 'disabled' : '' }}>
+                                                    </label>
+                                                </div>
+                                                <div class="mt-1">
+                                                    <img id="{{ 'blah' . $key }}" src="" class="document-preview-img" style="display: none;" onerror="this.style.display='none';" />
                                                 </div>
                                             </div>
                                         </div>
@@ -370,12 +505,15 @@
                     <!-- Education Section -->
                     <div class="col-md-6">
                         <div class="card em-card">
-                            <div class="card-header">
-                                <h5>{{ __('Education Details') }}</h5>
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <h5><i class="ti ti-school"></i>{{ __('Education Details') }}</h5>
+                                <button type="button" class="btn btn-primary btn-sm add-education-row">
+                                    <i class="ti ti-plus me-1"></i>{{ __('Add Education') }}
+                                </button>
                             </div>
                             <div class="card-body employee-detail-create-body">
                                 <div id="education-details-container">
-                                    <div class="row education-detail-row">
+                                    <div class="row g-3 education-detail-row">
                                         <div class="form-group col-md-6">
                                             {!! Form::label('education[0][degree]', __('Degree'), ['class' => 'form-label']) !!}
                                             <select name="education[0][degree]" class="form-control degree">
@@ -413,31 +551,30 @@
                                             ]) !!}
                                         </div>
                                         <div class="form-group col-md-12">
-                                                {!! Form::label("education[0][document]", __('Education Document'), ['class' => 'form-label']) !!}                                            <div class="choose-files">
-                                                <label for="education[0][document]">
-                                                    <div class="bg-primary document cursor-pointer">
-                                                        <i class="ti ti-upload"></i>{{ __('Choose file here') }}
-                                                    </div>
-                                                    <input type="file" 
-                                                        name="education[0][document]" 
-                                                        id="education[0][document]" 
-                                                        class="form-control file education-document"
-                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                                                </label>
+                                            {!! Form::label("education[0][document]", __('Education Document'), ['class' => 'form-label']) !!}
+                                            <div class="d-flex flex-column gap-2 mt-0">
+                                                <div class="choose-files">
+                                                    <label for="education[0][document]" class="m-0 w-100">
+                                                        <div class="btn btn-primary btn-sm document cursor-pointer w-100">
+                                                            <i class="ti ti-upload me-1"></i>{{ __('Choose file here') }}
+                                                        </div>
+                                                        <input type="file"
+                                                            name="education[0][document]"
+                                                            id="education[0][document]"
+                                                            class="form-control file education-document"
+                                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                                    </label>
+                                                </div>
+                                                <div class="preview-container"></div>
                                             </div>
                                         </div>
                                       
-                                        <div class="form-group col-md-12 text-end">
-                                            <button type="button" class="btn btn-danger remove-education-row">
-                                                <i class="fa fa-trash"></i> Remove
+                                        <div class="col-md-12 text-end">
+                                            <button type="button" class="btn btn-sm btn-danger remove-education-row">
+                                                <i class="ti ti-trash me-1"></i>{{ __('Remove') }}
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="form-group mt-3">
-                                    <button type="button" class="btn btn-primary add-education-row">
-                                        <i class="fa fa-plus"></i> Add Education
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -448,11 +585,11 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card em-card">
-                            <div class="card-header">
-                                <h5>{{ __('Bank Details') }}</h5>
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <h5><i class="ti ti-credit-card"></i>{{ __('Bank Details') }}</h5>
                             </div>
                             <div class="card-body employee-detail-create-body">
-                                <div class="row">
+                                <div class="row g-3">
                                     <div class="form-group col-md-6">
                                         {!! Form::label('account_holder_name', __('Account Holder Name'), ['class' => 'form-label']) !!}
                                         {!! Form::text('account_holder_name', old('account_holder_name'), [
@@ -505,8 +642,10 @@
                     </div>
                 </div>
 
-                <div class="float-end">
-                    <button type="submit" class="btn btn-primary">{{ 'Create' }}</button>
+                <div class="form-submit-bar">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="ti ti-device-floppy me-2"></i>{{ __('Create Employee') }}
+                    </button>
                 </div>
                 {{ Form::close() }}
             </div>
@@ -638,9 +777,9 @@
                             <input type="number" name="experience[${experienceRowCount}][previous_salary]" 
                                 class="form-control" placeholder="Enter previous salary">
                         </div>
-                        <div class="form-group col-md-12 text-end">
-                            <button type="button" class="btn btn-danger remove-experience-row">
-                                <i class="fa fa-trash"></i> Remove
+                        <div class="col-md-12 text-end">
+                            <button type="button" class="btn btn-sm btn-danger remove-experience-row">
+                                <i class="ti ti-trash me-1"></i> Remove
                             </button>
                         </div>
                     </div>
@@ -743,7 +882,7 @@
             // Add new education row
             $('.add-education-row').click(function() {
                 const newRow = `
-                    <div class="row education-detail-row mb-3">
+                    <div class="row g-3 education-detail-row">
                         <div class="form-group col-md-6">
                             <label class="form-label">Degree</label>
                             <select name="education[${educationRowCount}][degree]" class="form-control degree">
@@ -775,22 +914,25 @@
                         </div>
                         <div class="form-group col-md-12">
                             <label class="form-label">Education Document</label>
-                            <div class="choose-files">
-                                <label for="education[${educationRowCount}][document]">
-                                    <div class="bg-primary document cursor-pointer">
-                                        <i class="ti ti-upload"></i> Choose file here
-                                    </div>
-                                    <input type="file" name="education[${educationRowCount}][document]"
-                                           id="education[${educationRowCount}][document]"
-                                           class="form-control file education-document"
-                                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                                </label>
+                            <div class="d-flex flex-column gap-2 mt-0">
+                                <div class="choose-files">
+                                    <label for="education[${educationRowCount}][document]" class="m-0">
+                                        <div class="btn btn-sm btn-primary document cursor-pointer">
+                                            <i class="ti ti-upload me-1"></i> Choose file here
+                                        </div>
+                                        <input type="file" name="education[${educationRowCount}][document]"
+                                               id="education[${educationRowCount}][document]"
+                                               class="form-control file education-document"
+                                               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                    </label>
+                                </div>
+                                <div class="preview-container"></div>
                             </div>
                         </div>
                         
-                        <div class="form-group col-md-12 text-end">
-                            <button type="button" class="btn btn-danger remove-education-row">
-                                <i class="fa fa-trash"></i> Remove
+                        <div class="col-md-12 text-end">
+                            <button type="button" class="btn btn-sm btn-danger remove-education-row">
+                                <i class="ti ti-trash me-1"></i> Remove
                             </button>
                         </div>
                     </div>
@@ -818,13 +960,16 @@
                     
                     reader.onload = function(e) {
                         // Remove any existing preview
-                        row.find('.document-preview').remove();
+                        row.find('.document-preview-img').remove();
+                        row.find('.document-preview-text').remove();
                         
                         // Add preview for image files
                         if (input.files[0].type.match('image.*')) {
-                            const preview = $('<img class="document-preview mt-2" style="max-width: 200px; max-height: 200px;">');
+                            const preview = $('<img class="document-preview-img img-thumbnail mt-2">');
                             preview.attr('src', e.target.result);
-                            row.find('.choose-files').append(preview);
+                            row.find('.preview-container').html(preview);
+                        } else {
+                            row.find('.preview-container').html('<span class="document-preview-text text-muted text-xs d-block mt-2">File selected (not an image preview)</span>');
                         }
                     }
                     

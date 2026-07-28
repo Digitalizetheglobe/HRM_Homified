@@ -31,6 +31,7 @@ use Twilio\Rest\Api\V2010\Account\Call\UserDefinedMessageList;
 use Twilio\Rest\Api\V2010\Account\Call\SiprecList;
 use Twilio\Rest\Api\V2010\Account\Call\StreamList;
 use Twilio\Rest\Api\V2010\Account\Call\PaymentList;
+use Twilio\Rest\Api\V2010\Account\Call\FeedbackList;
 
 
 /**
@@ -71,6 +72,7 @@ class CallInstance extends InstanceResource
     protected $_siprec;
     protected $_streams;
     protected $_payments;
+    protected $_feedback;
 
     /**
      * Initialize the CallInstance
@@ -235,6 +237,14 @@ class CallInstance extends InstanceResource
     protected function getPayments(): PaymentList
     {
         return $this->proxy()->payments;
+    }
+
+    /**
+     * Access the feedback
+     */
+    protected function getFeedback(): FeedbackList
+    {
+        return $this->proxy()->feedback;
     }
 
     /**

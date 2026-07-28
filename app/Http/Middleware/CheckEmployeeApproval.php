@@ -34,6 +34,7 @@ class CheckEmployeeApproval
                     'company-policy.employee.track-download',
                     'company-policy.employee.acknowledge',
                     'company.logo',
+                    'storage.proxy',
                 ];
 
                 $currentRoute = $request->route() ? $request->route()->getName() : null;

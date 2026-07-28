@@ -1215,6 +1215,71 @@
         @include('layouts.cookie_consent')
     @endif
 
+    <!-- Background Geolocation Tracking for Punched In Employees -->
+    @if(\Auth::check() && \Auth::user()->type === 'employee')
+        @php
+            $employee = \Auth::user()->employee;
+            $isClockedIn = false;
+            if ($employee) {
+                $today = \Carbon\Carbon::today()->toDateString();
+                $attendance = \App\Models\AttendanceEmployee::where('employee_id', $employee->id)
+                    ->where('date', $today)
+                    ->first();
+                if ($attendance) {
+                    $slot1Active = !empty($attendance->clock_in) && (empty($attendance->clock_out) || $attendance->clock_out === '00:00:00');
+                    $slot2Active = !empty($attendance->clock_in_2) && $attendance->clock_in_2 !== '00:00:00' && (empty($attendance->clock_out_2) || $attendance->clock_out_2 === '00:00:00');
+                    if ($slot1Active || $slot2Active) {
+                        $isClockedIn = true;
+                    }
+                }
+            }
+        @endphp
+
+        @if($isClockedIn)
+            <script>
+                (function() {
+                    function sendLocation() {
+                        if (!navigator.geolocation) {
+                            console.log("Geolocation is not supported by this browser.");
+                            return;
+                        }
+
+                        navigator.geolocation.getCurrentPosition(function(position) {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+
+                            $.ajax({
+                                url: "{{ route('employee.ping-location') }}",
+                                type: "POST",
+                                data: {
+                                    latitude: lat,
+                                    longitude: lng,
+                                    _token: "{{ csrf_token() }}"
+                                },
+                                success: function(response) {
+                                    console.log("Location tracked: ", response.message);
+                                },
+                                error: function(xhr) {
+                                    console.error("Location tracking error", xhr);
+                                }
+                            });
+                        }, function(error) {
+                            console.warn("Geolocation warning: ", error.message);
+                        }, {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        });
+                    }
+
+                    // Ping location immediately, then every 2 minutes (120000 ms)
+                    sendLocation();
+                    setInterval(sendLocation, 120000);
+                })();
+            </script>
+        @endif
+    @endif
+
     <script>
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {

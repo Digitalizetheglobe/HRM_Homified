@@ -23,30 +23,30 @@ abstract class TokenOptions
     /**
      * @param string $clientSecret The credential for confidential OAuth App.
      * @param string $code JWT token related to the authorization code grant type.
-     * @param string $redirectUri The redirect uri
-     * @param string $audience The targeted audience uri
-     * @param string $refreshToken JWT token related to refresh access token.
-     * @param string $scope The scope of token
+     * @param string $codeVerifier A code which is generation cryptographically.
+     * @param string $deviceCode JWT token related to the device code grant type.
+     * @param string $refreshToken JWT token related to the refresh token grant type.
+     * @param string $deviceId The Id of the device associated with the token (refresh token).
      * @return CreateTokenOptions Options builder
      */
     public static function create(
         
         string $clientSecret = Values::NONE,
         string $code = Values::NONE,
-        string $redirectUri = Values::NONE,
-        string $audience = Values::NONE,
+        string $codeVerifier = Values::NONE,
+        string $deviceCode = Values::NONE,
         string $refreshToken = Values::NONE,
-        string $scope = Values::NONE
+        string $deviceId = Values::NONE
 
     ): CreateTokenOptions
     {
         return new CreateTokenOptions(
             $clientSecret,
             $code,
-            $redirectUri,
-            $audience,
+            $codeVerifier,
+            $deviceCode,
             $refreshToken,
-            $scope
+            $deviceId
         );
     }
 
@@ -57,27 +57,27 @@ class CreateTokenOptions extends Options
     /**
      * @param string $clientSecret The credential for confidential OAuth App.
      * @param string $code JWT token related to the authorization code grant type.
-     * @param string $redirectUri The redirect uri
-     * @param string $audience The targeted audience uri
-     * @param string $refreshToken JWT token related to refresh access token.
-     * @param string $scope The scope of token
+     * @param string $codeVerifier A code which is generation cryptographically.
+     * @param string $deviceCode JWT token related to the device code grant type.
+     * @param string $refreshToken JWT token related to the refresh token grant type.
+     * @param string $deviceId The Id of the device associated with the token (refresh token).
      */
     public function __construct(
         
         string $clientSecret = Values::NONE,
         string $code = Values::NONE,
-        string $redirectUri = Values::NONE,
-        string $audience = Values::NONE,
+        string $codeVerifier = Values::NONE,
+        string $deviceCode = Values::NONE,
         string $refreshToken = Values::NONE,
-        string $scope = Values::NONE
+        string $deviceId = Values::NONE
 
     ) {
         $this->options['clientSecret'] = $clientSecret;
         $this->options['code'] = $code;
-        $this->options['redirectUri'] = $redirectUri;
-        $this->options['audience'] = $audience;
+        $this->options['codeVerifier'] = $codeVerifier;
+        $this->options['deviceCode'] = $deviceCode;
         $this->options['refreshToken'] = $refreshToken;
-        $this->options['scope'] = $scope;
+        $this->options['deviceId'] = $deviceId;
     }
 
     /**
@@ -105,33 +105,33 @@ class CreateTokenOptions extends Options
     }
 
     /**
-     * The redirect uri
+     * A code which is generation cryptographically.
      *
-     * @param string $redirectUri The redirect uri
+     * @param string $codeVerifier A code which is generation cryptographically.
      * @return $this Fluent Builder
      */
-    public function setRedirectUri(string $redirectUri): self
+    public function setCodeVerifier(string $codeVerifier): self
     {
-        $this->options['redirectUri'] = $redirectUri;
+        $this->options['codeVerifier'] = $codeVerifier;
         return $this;
     }
 
     /**
-     * The targeted audience uri
+     * JWT token related to the device code grant type.
      *
-     * @param string $audience The targeted audience uri
+     * @param string $deviceCode JWT token related to the device code grant type.
      * @return $this Fluent Builder
      */
-    public function setAudience(string $audience): self
+    public function setDeviceCode(string $deviceCode): self
     {
-        $this->options['audience'] = $audience;
+        $this->options['deviceCode'] = $deviceCode;
         return $this;
     }
 
     /**
-     * JWT token related to refresh access token.
+     * JWT token related to the refresh token grant type.
      *
-     * @param string $refreshToken JWT token related to refresh access token.
+     * @param string $refreshToken JWT token related to the refresh token grant type.
      * @return $this Fluent Builder
      */
     public function setRefreshToken(string $refreshToken): self
@@ -141,14 +141,14 @@ class CreateTokenOptions extends Options
     }
 
     /**
-     * The scope of token
+     * The Id of the device associated with the token (refresh token).
      *
-     * @param string $scope The scope of token
+     * @param string $deviceId The Id of the device associated with the token (refresh token).
      * @return $this Fluent Builder
      */
-    public function setScope(string $scope): self
+    public function setDeviceId(string $deviceId): self
     {
-        $this->options['scope'] = $scope;
+        $this->options['deviceId'] = $deviceId;
         return $this;
     }
 

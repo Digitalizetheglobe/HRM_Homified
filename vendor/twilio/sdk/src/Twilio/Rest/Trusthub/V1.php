@@ -19,8 +19,6 @@ use Twilio\Domain;
 use Twilio\Exceptions\TwilioException;
 use Twilio\InstanceContext;
 use Twilio\Rest\Trusthub\V1\ComplianceInquiriesList;
-use Twilio\Rest\Trusthub\V1\ComplianceRegistrationInquiriesList;
-use Twilio\Rest\Trusthub\V1\ComplianceTollfreeInquiriesList;
 use Twilio\Rest\Trusthub\V1\CustomerProfilesList;
 use Twilio\Rest\Trusthub\V1\EndUserList;
 use Twilio\Rest\Trusthub\V1\EndUserTypeList;
@@ -32,8 +30,6 @@ use Twilio\Version;
 
 /**
  * @property ComplianceInquiriesList $complianceInquiries
- * @property ComplianceRegistrationInquiriesList $complianceRegistrationInquiries
- * @property ComplianceTollfreeInquiriesList $complianceTollfreeInquiries
  * @property CustomerProfilesList $customerProfiles
  * @property EndUserList $endUsers
  * @property EndUserTypeList $endUserTypes
@@ -52,8 +48,6 @@ use Twilio\Version;
 class V1 extends Version
 {
     protected $_complianceInquiries;
-    protected $_complianceRegistrationInquiries;
-    protected $_complianceTollfreeInquiries;
     protected $_customerProfiles;
     protected $_endUsers;
     protected $_endUserTypes;
@@ -79,22 +73,6 @@ class V1 extends Version
             $this->_complianceInquiries = new ComplianceInquiriesList($this);
         }
         return $this->_complianceInquiries;
-    }
-
-    protected function getComplianceRegistrationInquiries(): ComplianceRegistrationInquiriesList
-    {
-        if (!$this->_complianceRegistrationInquiries) {
-            $this->_complianceRegistrationInquiries = new ComplianceRegistrationInquiriesList($this);
-        }
-        return $this->_complianceRegistrationInquiries;
-    }
-
-    protected function getComplianceTollfreeInquiries(): ComplianceTollfreeInquiriesList
-    {
-        if (!$this->_complianceTollfreeInquiries) {
-            $this->_complianceTollfreeInquiries = new ComplianceTollfreeInquiriesList($this);
-        }
-        return $this->_complianceTollfreeInquiries;
     }
 
     protected function getCustomerProfiles(): CustomerProfilesList

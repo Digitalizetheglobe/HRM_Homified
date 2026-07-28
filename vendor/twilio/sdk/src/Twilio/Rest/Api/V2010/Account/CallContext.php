@@ -31,6 +31,7 @@ use Twilio\Rest\Api\V2010\Account\Call\UserDefinedMessageList;
 use Twilio\Rest\Api\V2010\Account\Call\SiprecList;
 use Twilio\Rest\Api\V2010\Account\Call\StreamList;
 use Twilio\Rest\Api\V2010\Account\Call\PaymentList;
+use Twilio\Rest\Api\V2010\Account\Call\FeedbackList;
 
 
 /**
@@ -42,11 +43,13 @@ use Twilio\Rest\Api\V2010\Account\Call\PaymentList;
  * @property SiprecList $siprec
  * @property StreamList $streams
  * @property PaymentList $payments
+ * @property FeedbackList $feedback
  * @method \Twilio\Rest\Api\V2010\Account\Call\SiprecContext siprec(string $sid)
  * @method \Twilio\Rest\Api\V2010\Account\Call\UserDefinedMessageSubscriptionContext userDefinedMessageSubscriptions(string $sid)
  * @method \Twilio\Rest\Api\V2010\Account\Call\PaymentContext payments(string $sid)
  * @method \Twilio\Rest\Api\V2010\Account\Call\RecordingContext recordings(string $sid)
  * @method \Twilio\Rest\Api\V2010\Account\Call\NotificationContext notifications(string $sid)
+ * @method \Twilio\Rest\Api\V2010\Account\Call\FeedbackContext feedback()
  * @method \Twilio\Rest\Api\V2010\Account\Call\StreamContext streams(string $sid)
  */
 class CallContext extends InstanceContext
@@ -59,6 +62,7 @@ class CallContext extends InstanceContext
     protected $_siprec;
     protected $_streams;
     protected $_payments;
+    protected $_feedback;
 
     /**
      * Initialize the CallContext
@@ -109,7 +113,7 @@ class CallContext extends InstanceContext
     public function fetch(): CallInstance
     {
 
-        $payload = $this->version->fetch('GET', $this->uri, [], []);
+        $payload = $this->version->fetch('GET', $this->uri);
 
         return new CallInstance(
             $this->version,
@@ -290,6 +294,22 @@ class CallContext extends InstanceContext
         }
 
         return $this->_payments;
+    }
+
+    /**
+     * Access the feedback
+     */
+    protected function getFeedback(): FeedbackList
+    {
+        if (!$this->_feedback) {
+            $this->_feedback = new FeedbackList(
+                $this->version,
+                $this->solution['accountSid'],
+                $this->solution['sid']
+            );
+        }
+
+        return $this->_feedback;
     }
 
     /**

@@ -57,6 +57,90 @@
     </div>
 @endsection
 
+@push('css-page')
+    <style>
+        /* =============================================
+           HRM Employee Show – Premium UI
+           Primary colour: var(--color-customColor)
+        ============================================= */
+
+        /* ── Card ──────────────────────────────────── */
+        .card {
+            border-radius: 12px !important;
+            border: 1px solid #e5e7eb !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+            overflow: hidden;
+        }
+        .card .card-header {
+            border-left: 4px solid var(--color-customColor, #c9a227);
+            background: linear-gradient(to right, rgba(201,162,39,0.08) 0%, #fff 55%);
+            padding: 12px 18px;
+            border-bottom: 1px solid #ebebeb;
+        }
+        .card .card-header h5,
+        .card .card-header h6 {
+            font-weight: 600;
+            margin-bottom: 0;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card .card-header .ti {
+            color: var(--color-customColor, #c9a227);
+        }
+
+        /* ── Info Row Labels ─────────────────────────── */
+        .info-row-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .info-row-value {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #111827;
+            display: block;
+        }
+
+        /* ── Approval Alert ──────────────────────────── */
+        .alert { border-radius: 10px; font-size: 0.875rem; }
+        .alert-success {
+            background: linear-gradient(135deg, #d1fae5, #ecfdf5);
+            color: #065f46; border-color: #a7f3d0;
+        }
+        .alert-warning {
+            background: linear-gradient(135deg, #fef3c7, #fffbeb);
+            color: #92400e; border-color: #fcd34d;
+        }
+        .alert-danger {
+            background: linear-gradient(135deg, #fee2e2, #fef2f2);
+            color: #991b1b; border-color: #fca5a5;
+        }
+
+        /* ── Tables ──────────────────────────────────── */
+        .table thead th {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .table tbody td {
+            font-size: 0.875rem;
+            vertical-align: middle;
+        }
+
+        /* ── Badge ───────────────────────────────────── */
+        .badge { border-radius: 6px; font-weight: 500; font-size: 0.78rem; }
+    </style>
+@endpush
+
 @section('content')
     {{-- Approval Status Alert --}}
     <div class="row">
@@ -64,7 +148,7 @@
             <div class="alert alert-@if($employee->approval_status === 'approved')success
                                 @elseif($employee->approval_status === 'rejected')danger
                                 @elsewarning @endif">
-                <strong>{{ __('Approval Status') }}:</strong> 
+                <i class="ti ti-shield-check me-1"></i><strong>{{ __('Approval Status') }}:</strong> 
                 {{ ucfirst($employee->approval_status ?? 'pending') }}
                 
                 @if($employee->approval_status === 'approved' && $employee->approved_at)
@@ -88,52 +172,52 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Employee ID') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employeesId }}</span>
+                            <span class="info-row-label">{{ __('Employee ID') }}</span>
+                            <span class="info-row-value">{{ $employeesId }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Name') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->full_name }}</span>
+                            <span class="info-row-label">{{ __('Name') }}</span>
+                            <span class="info-row-value">{{ $employee->full_name }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Email') }}</span>
-                            <span class="font-weight-bold text-dark text-break">{{ $employee->email }}</span>
+                            <span class="info-row-label">{{ __('Email') }}</span>
+                            <span class="info-row-value text-break">{{ $employee->email }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Phone') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->phone }}</span>
+                            <span class="info-row-label">{{ __('Phone') }}</span>
+                            <span class="info-row-value">{{ $employee->phone }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Office Phone 1') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->office_phone_one ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Office Phone 1') }}</span>
+                            <span class="info-row-value">{{ $employee->office_phone_one ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Office Phone 2') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->office_phone_two ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Office Phone 2') }}</span>
+                            <span class="info-row-value">{{ $employee->office_phone_two ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Emergency Number') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->emergency_number ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Emergency Number') }}</span>
+                            <span class="info-row-value">{{ $employee->emergency_number ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Date of Birth') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->dob ? \Auth::user()->dateFormat($employee->dob) : __('Not Set') }}</span>
+                            <span class="info-row-label">{{ __('Date of Birth') }}</span>
+                            <span class="info-row-value">{{ $employee->dob ? \Auth::user()->dateFormat($employee->dob) : __('Not Set') }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Blood Group') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->blood_group ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Blood Group') }}</span>
+                            <span class="info-row-value">{{ $employee->blood_group ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Gender') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->gender }}</span>
+                            <span class="info-row-label">{{ __('Gender') }}</span>
+                            <span class="info-row-value">{{ $employee->gender }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Week Off Day') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->week_off_day ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Week Off Day') }}</span>
+                            <span class="info-row-value">{{ $employee->week_off_day ?? 'N/A' }}</span>
                         </div>
                         <div class="col-12 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Address') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->address ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Address') }}</span>
+                            <span class="info-row-value">{{ $employee->address ?? 'N/A' }}</span>
                         </div>
                     </div>
                 </div>
@@ -147,24 +231,24 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Branch') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->branch->name ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Branch') }}</span>
+                            <span class="info-row-value">{{ $employee->branch->name ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Department') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->department->name ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Department') }}</span>
+                            <span class="info-row-value">{{ $employee->department->name ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Designation') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->designation->name ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Designation') }}</span>
+                            <span class="info-row-value">{{ $employee->designation->name ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Work Location') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->work_location ?? 'Pune' }}</span>
+                            <span class="info-row-label">{{ __('Work Location') }}</span>
+                            <span class="info-row-value">{{ $employee->work_location ?? 'Pune' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Date of Joining') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->company_doj ? \Auth::user()->dateFormat($employee->company_doj) : __('Not Set') }}</span>
+                            <span class="info-row-label">{{ __('Date of Joining') }}</span>
+                            <span class="info-row-value">{{ $employee->company_doj ? \Auth::user()->dateFormat($employee->company_doj) : __('Not Set') }}</span>
                         </div>
                     </div>
                 </div>
@@ -181,28 +265,28 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Account Holder Name') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->account_holder_name ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Account Holder Name') }}</span>
+                            <span class="info-row-value">{{ $employee->account_holder_name ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Account Number') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->account_number ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Account Number') }}</span>
+                            <span class="info-row-value">{{ $employee->account_number ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Bank Name') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->bank_name ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Bank Name') }}</span>
+                            <span class="info-row-value">{{ $employee->bank_name ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('IFSC Code') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->bank_identifier_code ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('IFSC Code') }}</span>
+                            <span class="info-row-value">{{ $employee->bank_identifier_code ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Branch Location') }}</span>
-                            <span class="font-weight-bold text-dark">{{ $employee->branch_location ?? 'N/A' }}</span>
+                            <span class="info-row-label">{{ __('Branch Location') }}</span>
+                            <span class="info-row-value">{{ $employee->branch_location ?? 'N/A' }}</span>
                         </div>
                         <div class="col-md-6 border-bottom border-light pb-2">
-                            <span class="text-muted text-xs d-block">{{ __('Account Type') }}</span>
-                            <span class="font-weight-bold text-dark">
+                            <span class="info-row-label">{{ __('Account Type') }}</span>
+                            <span class="info-row-value">
                                 @if(!empty($employee->account_type))
                                     @if($employee->account_type == 'salary_account')
                                         {{ __('Salary Account') }}
@@ -280,8 +364,8 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-flush border-0">
-                            <thead class="thead-light">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="border-0">{{ __('Company Name') }}</th>
                                     <th class="border-0">{{ __('Designation') }}</th>
@@ -314,7 +398,7 @@
         </div>
     </div>
 
-    <div class="row">
+    <div class="row mt-4">
         <div class="col-xl-12">
             <div class="card shadow-none border">
                 <div class="card-header">
@@ -322,8 +406,8 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-flush border-0">
-                            <thead class="thead-light">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="border-0">{{ __('Degree') }}</th>
                                     <th class="border-0">{{ __('College Name') }}</th>
@@ -373,7 +457,7 @@
 
 
 
-    <div class="row">
+    <div class="row mt-4">
         <!-- Company Policy Acknowledgements Section -->
         <div class="col-xl-12">
             <div class="card shadow-none border">

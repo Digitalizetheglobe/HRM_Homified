@@ -43,7 +43,6 @@ use Twilio\Deserialize;
  * @property string|null $messagingServiceInstanceSid
  * @property string|null $chatServiceInstanceSid
  * @property string|null $flexServiceInstanceSid
- * @property string|null $flexInstanceSid
  * @property string|null $uiLanguage
  * @property array|null $uiAttributes
  * @property array|null $uiDependencies
@@ -107,7 +106,6 @@ class ConfigurationInstance extends InstanceResource
             'messagingServiceInstanceSid' => Values::array_get($payload, 'messaging_service_instance_sid'),
             'chatServiceInstanceSid' => Values::array_get($payload, 'chat_service_instance_sid'),
             'flexServiceInstanceSid' => Values::array_get($payload, 'flex_service_instance_sid'),
-            'flexInstanceSid' => Values::array_get($payload, 'flex_instance_sid'),
             'uiLanguage' => Values::array_get($payload, 'ui_language'),
             'uiAttributes' => Values::array_get($payload, 'ui_attributes'),
             'uiDependencies' => Values::array_get($payload, 'ui_dependencies'),

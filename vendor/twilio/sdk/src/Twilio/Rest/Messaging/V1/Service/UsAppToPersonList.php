@@ -96,12 +96,6 @@ class UsAppToPersonList extends ListResource
                 Serialize::map($options['optOutKeywords'], function ($e) { return $e; }),
             'HelpKeywords' =>
                 Serialize::map($options['helpKeywords'], function ($e) { return $e; }),
-            'SubscriberOptIn' =>
-                Serialize::booleanToString($options['subscriberOptIn']),
-            'AgeGated' =>
-                Serialize::booleanToString($options['ageGated']),
-            'DirectLending' =>
-                Serialize::booleanToString($options['directLending']),
         ]);
 
         $payload = $this->version->create('POST', $this->uri, [], $data);

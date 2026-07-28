@@ -29,7 +29,6 @@ use Twilio\Version;
  * @property string|null $interactionSid
  * @property string|null $channelSid
  * @property string|null $url
- * @property array|null $routingProperties
  */
 class InteractionChannelParticipantInstance extends InstanceResource
 {
@@ -53,7 +52,6 @@ class InteractionChannelParticipantInstance extends InstanceResource
             'interactionSid' => Values::array_get($payload, 'interaction_sid'),
             'channelSid' => Values::array_get($payload, 'channel_sid'),
             'url' => Values::array_get($payload, 'url'),
-            'routingProperties' => Values::array_get($payload, 'routing_properties'),
         ];
 
         $this->solution = ['interactionSid' => $interactionSid, 'channelSid' => $channelSid, 'sid' => $sid ?: $this->properties['sid'], ];

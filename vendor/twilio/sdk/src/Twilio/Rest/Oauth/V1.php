@@ -18,18 +18,27 @@ namespace Twilio\Rest\Oauth;
 use Twilio\Domain;
 use Twilio\Exceptions\TwilioException;
 use Twilio\InstanceContext;
-use Twilio\Rest\Oauth\V1\AuthorizeList;
+use Twilio\Rest\Oauth\V1\DeviceCodeList;
+use Twilio\Rest\Oauth\V1\OauthList;
+use Twilio\Rest\Oauth\V1\OpenidDiscoveryList;
 use Twilio\Rest\Oauth\V1\TokenList;
+use Twilio\Rest\Oauth\V1\UserInfoList;
 use Twilio\Version;
 
 /**
- * @property AuthorizeList $authorize
+ * @property DeviceCodeList $deviceCode
+ * @property OauthList $oauth
+ * @property OpenidDiscoveryList $openidDiscovery
  * @property TokenList $token
+ * @property UserInfoList $userInfo
  */
 class V1 extends Version
 {
-    protected $_authorize;
+    protected $_deviceCode;
+    protected $_oauth;
+    protected $_openidDiscovery;
     protected $_token;
+    protected $_userInfo;
 
     /**
      * Construct the V1 version of Oauth
@@ -42,12 +51,28 @@ class V1 extends Version
         $this->version = 'v1';
     }
 
-    protected function getAuthorize(): AuthorizeList
+    protected function getDeviceCode(): DeviceCodeList
     {
-        if (!$this->_authorize) {
-            $this->_authorize = new AuthorizeList($this);
+        if (!$this->_deviceCode) {
+            $this->_deviceCode = new DeviceCodeList($this);
         }
-        return $this->_authorize;
+        return $this->_deviceCode;
+    }
+
+    protected function getOauth(): OauthList
+    {
+        if (!$this->_oauth) {
+            $this->_oauth = new OauthList($this);
+        }
+        return $this->_oauth;
+    }
+
+    protected function getOpenidDiscovery(): OpenidDiscoveryList
+    {
+        if (!$this->_openidDiscovery) {
+            $this->_openidDiscovery = new OpenidDiscoveryList($this);
+        }
+        return $this->_openidDiscovery;
     }
 
     protected function getToken(): TokenList
@@ -56,6 +81,14 @@ class V1 extends Version
             $this->_token = new TokenList($this);
         }
         return $this->_token;
+    }
+
+    protected function getUserInfo(): UserInfoList
+    {
+        if (!$this->_userInfo) {
+            $this->_userInfo = new UserInfoList($this);
+        }
+        return $this->_userInfo;
     }
 
     /**

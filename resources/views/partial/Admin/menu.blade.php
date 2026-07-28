@@ -233,6 +233,15 @@
                             </li>
                         @endif
 
+                        <!-- Employee Tracking -->
+                        @if (\Auth::user()->type === 'company' || \Auth::user()->type === 'hr')
+                            <li class="dash-item {{ Request::segment(1) == 'employee-tracking' ? 'active' : '' }}">
+                                <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('employee.tracking') }}">
+                                    {{ __('Employee Tracking') }}
+                                </a>
+                            </li>
+                        @endif
+
                         <!-- Bulk Attendance -->
                         @if (Gate::check('attendance.bulk.view.all'))
                             <li class="dash-item">
