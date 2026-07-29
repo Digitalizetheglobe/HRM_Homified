@@ -262,15 +262,17 @@ try {
             'loan_type' => isset($payslip->loan) ? gettype($payslip->loan) : 'N/A'
         ]);
         
-        $basicComponent = $grossSalary * (float)0.40;
-        $hraComponent = $grossSalary * (float)0.20;
-        $medicalComponent = $grossSalary * (float)0.05;
-        $specialComponent = $grossSalary * (float)0.35;
+        $basicComponent = $grossSalary * (float)0.45;
+        $hraComponent = $grossSalary * (float)0.18;
+        $conveyanceComponent = $grossSalary * (float)0.0372;
+        $medicalComponent = $grossSalary * (float)0.0291;
+        $specialComponent = $grossSalary * (float)0.3037;
         
         \Log::debug('Salary components calculated', [
             'gross_salary' => $grossSalary,
             'basic' => $basicComponent,
             'hra' => $hraComponent,
+            'conveyance' => $conveyanceComponent,
             'medical' => $medicalComponent,
             'special' => $specialComponent
         ]);
@@ -289,7 +291,7 @@ try {
         $perDaySalary = $grossSalary / (float)30;
         $deductionForAbsent = (float)$absentDays * $perDaySalary;
         $deductionForCasualLeave = (float)$casualLeaveDays * $perDaySalary;
-        $ptDeduction = is_numeric($payslip->professional_tax ?? 200) ? (float)($payslip->professional_tax ?? 200) : 200;
+        $ptDeduction = is_numeric($payslip->professional_tax ?? 0) ? (float)($payslip->professional_tax ?? 0) : 0;
         
         \Log::debug('Deductions calculated', [
             'per_day_salary' => $perDaySalary,
@@ -508,11 +510,6 @@ try {
 <div class="modal-body">
     <div class="text-md-end mb-2">
         <a href="#" class="btn btn-sm btn-primary" onclick="saveAsPDF()"><span class="fa fa-download"></span></a>
-
-        @if (\Auth::user()->type == 'company' || \Auth::user()->type == 'hr')
-            <a href="{{ route('payslip.send', [$employee->id, $payslip->salary_month]) }}" 
-                class="btn btn-sm btn-warning"><span class="fa fa-paper-plane"></span></a>
-        @endif
     </div>
     
     <div class="invoice" id="printableArea">
@@ -526,11 +523,16 @@ try {
                         <tr>
                             <td style="width: 25%; border-right: 2px solid #000; padding: 15px; text-align: center; vertical-align: middle;">
                                 @php
-                                    $svgPath = storage_path('uploads/logo/logo.svg');
-                                    $svgBase64 = file_exists($svgPath) ? 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($svgPath)) : '';
+                                    $svgPath = storage_path('uploads/logo/logo.png');
+                                    if (file_exists($svgPath)) {
+                                        $mime = mime_content_type($svgPath);
+                                        $svgBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($svgPath));
+                                    } else {
+                                        $svgBase64 = '';
+                                    }
                                 @endphp
                                 @if(!empty($svgBase64))
-                                <img src="{{ $svgBase64 }}" style="max-width: 100px; max-height: 100px; object-fit: contain;" alt="Company Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <img src="{{ $svgBase64 }}" style="max-width: 160px; max-height: 160px; object-fit: contain;" alt="Company Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                 <div style="width: 100px; height: 100px; border: 1px solid #ccc; display: none; margin: 0 auto;"></div>
                                 @else
                                 <div style="width: 100px; height: 100px; border: 1px solid #ccc; display: inline-block; margin: 0 auto;"></div>
@@ -539,7 +541,7 @@ try {
                             <td style="padding: 15px; text-align: center;">
                                 <h2 style="margin: 0; font-size: 24px; font-weight: bold;">{{ \Utility::getValByName('company_name') }}</h2>
                                 <div style="font-size: 14px; margin: 8px 0;">
-                                    <strong>Office Address :</strong> {{ \Utility::getValByName('company_address') }}, {{ \Utility::getValByName('company_city') }}
+                                    <strong>Office Address :</strong> {{ \Utility::getValByName('company_address') }} {{ \Utility::getValByName('company_city') }}, {{ \Utility::getValByName('company_state') }}
                                 </div>
                                 
                             </td>
@@ -574,8 +576,8 @@ try {
                                         <td style="padding: 8px; border-left: 1px solid #000;">{{ $totalDays }}</td>
                                     </tr>
                                     <tr style="">
-                                        <td style="padding: 8px; font-weight: bold;">Date of Joining:</td>
-                                        <td style="padding: 8px; border-left: 1px solid #000;">{{ \Auth::user()->dateFormat($employee->company_doj) }}</td>
+                                        <td style="padding: 8px; font-weight: bold;">Payable Days :</td>
+                                        <td style="padding: 8px; border-left: 1px solid #000;">{{ $totalDays - $absentDays - $casualLeaveDays }}</td>
                                     </tr>
                                     
                                 </table>
@@ -589,22 +591,28 @@ try {
                                         <td style="padding: 8px; border-left: 1px solid #000;">{{ $employeesId ?? 'N/A' }}</td>   
                                     </tr>
                                     <tr style="border-bottom: 1px solid #000;">
-                                        <td style="padding: 8px; font-weight: bold;">Salary Month :</td>
-                                        <td style="padding: 8px; border-left: 1px solid #000;">{{ strtoupper(date('F - Y', strtotime($payslip->salary_month))) }}</td>
+                                        <td style="padding: 8px; font-weight: bold;">Date of Joining:</td>
+                                        <td style="padding: 8px; border-left: 1px solid #000;">{{ \Auth::user()->dateFormat($employee->company_doj) }}</td>
                                     </tr>
                                     <tr style="border-bottom: 1px solid #000;">
-                                        <td style="padding: 8px; font-weight: bold;">Payable Days :</td>
-                                        <td style="padding: 8px; border-left: 1px solid #000;">{{ $totalDays - $absentDays - $casualLeaveDays }}</td>
+                                        <td style="padding: 8px; font-weight: bold;">LOP days :</td>
+                                        <td style="padding: 8px; border-left: 1px solid #000;">{{ $absentDays }}</td>
                                     </tr>
-       
+                                    <tr style="">
+                                        <td style="padding: 8px; font-weight: bold;">Leaves Taken :</td>
+                                        <td style="padding: 8px; border-left: 1px solid #000;">{{ $leaveDays }}</td>
+                                    </tr>
                                 </table>
                             </td>
                         </tr>
                     </table>
 
-                    <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 10px; text-align: center; background-color: #f8f9fa;">
-                        <table>
+                    <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 0; background-color: #f8f9fa; font-size: 12px;">
+                        <table style="width: 100%; border-collapse: collapse;">
                             <tr>
+                                <td style="width: 33.33%; padding: 10px; text-align: center;"><strong>Banking Name:</strong> {{ $employee->account_holder_name ?? 'N/A' }}</td>
+                                <td style="width: 33.33%; padding: 10px; text-align: center; border-left: 1px solid #000; border-right: 1px solid #000;"><strong>Bank Name:</strong> {{ $employee->bank_name ?? 'N/A' }}</td>
+                                <td style="width: 33.33%; padding: 10px; text-align: center;"><strong>Bank A/C No:</strong> {{ $employee->account_number ?? 'N/A' }}</td>
                             </tr>
                         </table>
                     </div>
@@ -624,7 +632,7 @@ try {
                                             <th style="padding: 8px; font-size: 12px; font-weight: bold; border-bottom: 1px solid #000; text-align: right;">Amount (Rs.)</th>
                                         </tr>
                                         <tr>
-                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;">Basic</td>
+                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;">Basic Wage</td>
                                             <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; text-align: right;">{{ formatCurrencyForPdf($basicComponent) }}</td>
                                         </tr>
                                         <tr>
@@ -632,16 +640,20 @@ try {
                                             <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; text-align: right;">{{ formatCurrencyForPdf($hraComponent) }}</td>
                                         </tr>
                                         <tr>
-                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;">Medical</td>
+                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;">Conveyance Allowance</td>
+                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; text-align: right;">{{ formatCurrencyForPdf($conveyanceComponent) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;">Medical Allowance</td>
                                             <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; text-align: right;">{{ formatCurrencyForPdf($medicalComponent) }}</td>
                                         </tr>
                                         <tr>
-                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;">Special Allowance</td>
+                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;">Other Allowances</td>
                                             <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; text-align: right;">{{ formatCurrencyForPdf($specialComponent) }}</td>
                                         </tr>
                                         @php
-$arrearsAmount = isset($payslip->salary_arrears) ? (float)$payslip->salary_arrears : 0;
-$petrolAllowanceAmount = isset($payslip->petrol_allowance) ? (float)$payslip->petrol_allowance : 0;
+                                            $arrearsAmount = isset($payslip->salary_arrears) ? (float)$payslip->salary_arrears : 0;
+                                            $petrolAllowanceAmount = isset($payslip->petrol_allowance) ? (float)$payslip->petrol_allowance : 0;
                                         @endphp
                                         @if($arrearsAmount > 0)
                                         <tr>
@@ -734,8 +746,11 @@ $petrolAllowanceAmount = isset($payslip->petrol_allowance) ? (float)$payslip->pe
                                             <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;"></td>
                                             <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; text-align: right;"></td>
                                         </tr>
-                                        
-                                        <tr style="background-color: #f8f9fa; border-bottom: 1px solid #000;">
+                                        <tr style="height: 35px;">
+                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; border-right: 1px solid #000;"></td>
+                                            <td style="padding: 8px; font-size: 12px; border-bottom: 1px solid #000; text-align: right;"></td>
+                                        </tr>                                        
+                                        <tr style="background-color: #f8f9fa; ">
                                             <td style="padding: 10px; font-size: 14px; font-weight: bold; border-right: 1px solid #000;">Total Deductions (B)</td>
                                             <td style="padding: 10px; font-size: 14px; font-weight: bold; text-align: right;">{{ formatCurrencyForPdf($totalDeductions) }}</td>
                                         </tr>

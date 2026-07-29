@@ -4,70 +4,79 @@
 @endsection
 
 @section('content')
-<div style="padding: 20px; background-color: #f4f4f4; text-align: center;">
-    <div id="boxes" style="width: 800px; max-width: 100%; margin: 0 auto; background-color: #ffffff; padding: 50px; text-align: left;">
+@php
+    $genderPrefix = 'Mr.';
+    if (isset($employees->gender) && in_array(strtolower($employees->gender), ['female', 'f'])) {
+        $genderPrefix = 'Ms.';
+    }
 
-        {{-- Company Logo --}}
-        <div style="margin-bottom: 30px;">
-            <img src="{{ asset('storage/uploads/logo/logo.svg') }}"
-                 alt="{{ config('app.name', 'HRMGo') }}"
-                 style="height: 55px; width: auto; object-fit: contain;">
+    $fullName = trim(implode(' ', array_filter([$employees->name, $employees->middle_name, $employees->last_name])));
+    $designation = !empty($employees->designation->name) ? $employees->designation->name : '';
+    $joiningDate = !empty($employees->company_doj) ? date('jS F Y', strtotime($employees->company_doj)) : '';
+
+    // Fetch resignation or termination dates
+    $resignation = \App\Models\Resignation::where('employee_id', $employees->id)->first();
+    $termination = \App\Models\Termination::where('employee_id', $employees->id)->first();
+
+    $endDate = '';
+    $headerDate = '';
+    if (!empty($resignation->resignation_date)) {
+        $endDate = date('jS F Y', strtotime($resignation->resignation_date));
+        $headerDate = date('F Y', strtotime($resignation->resignation_date));
+    } elseif (!empty($termination->termination_date)) {
+        $endDate = date('jS F Y', strtotime($termination->termination_date));
+        $headerDate = date('F Y', strtotime($termination->termination_date));
+    } else {
+        $endDate = 'Present';
+        $headerDate = date('F Y');
+    }
+
+    // Base64 encode the letterhead image to ensure it renders correctly in PDF without CORS or space character issues
+    $letterheadPath = public_path('uploads/logo/appointment -letter.png');
+    $letterheadBase64 = '';
+    if (file_exists($letterheadPath)) {
+        $type = pathinfo($letterheadPath, PATHINFO_EXTENSION);
+        $data = file_get_contents($letterheadPath);
+        $letterheadBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+    }
+@endphp
+
+<div style="padding: 10px; background-color: #f4f4f4; text-align: center;">
+    <div id="boxes" style="width: 800px; height: 1120px; box-sizing: border-box; margin: 0 auto; background-color: #ffffff; background-image: url('{{ $letterheadBase64 }}'); background-size: 100% 100%; background-repeat: no-repeat; padding: 200px 40px 80px 40px; text-align: left;">
+
+        {{-- Date and Address --}}
+        <div style="text-align: right; font-family: Arial, sans-serif; font-size: 15px; color: #000; line-height: 1.4; margin-bottom: 40px;">
+            <p style="margin: 0 0 15px 0;"><strong>Date:</strong> {{ $headerDate }}</p>
+            <p style="margin: 0; text-align: right; display: inline-block; max-width: 300px;">
+                <strong>Address :</strong> 301, SV9 Corner,<br>
+                choudhary Park,<br>
+                 Wakad - 411057
+            </p>
         </div>
 
         {{-- Title --}}
-        <div style="text-align: center; margin-bottom: 40px;">
-            <h2 style="font-family: Arial, sans-serif; font-weight: bold; color: #000; margin: 0; font-size: 24px;">Experience Certificate</h2>
+        <div style="text-align: center; margin-bottom: 25px;">
+            <h2 style="font-family: Arial, sans-serif; font-weight: bold; color: #000; margin: 0; font-size: 26px; text-transform: uppercase;">Experience Letter</h2>
         </div>
 
-        {{-- Date and Recipient --}}
-        <div style="display: flex; justify-content: space-between; font-family: Arial, sans-serif; font-size: 14px; margin-bottom: 30px; color: #000;">
-            <div>
-                <p style="margin: 0 0 5px 0;"><strong>To,</strong></p>
-                <p style="margin: 0 0 5px 0;">{{ trim(join(' ', array_filter([$employees->name, $employees->middle_name, $employees->last_name]))) }}</p>
-                <p style="margin: 0 0 5px 0;">{{ !empty($employees->work_location) ? $employees->work_location : 'Pune' }}</p>
-            </div>
-            <div style="flex-shrink: 0; white-space: nowrap; text-align: right;">
-                <p style="margin: 0;"><strong>Date :</strong> {{ date('jS F Y') }}</p>
-            </div>
+        {{-- Subtitle --}}
+        <div style="text-align: center; margin-bottom: 45px;">
+            <h3 style="font-family: Arial, sans-serif; font-weight: bold; color: #000; margin: 0; font-size: 18px;">To Whomsoever it may concern</h3>
         </div>
 
         {{-- Content --}}
-        <div style="font-family: Arial, sans-serif; font-size: 14px; color: #000; line-height: 1.6;">
+        <div style="font-family: Arial, sans-serif; font-size: 15px; color: #000; line-height: 1.8; text-align: justify;">
             
-            <p style="margin-bottom: 20px;">Dear {{ trim(join(' ', array_filter([$employees->name]))) }},</p>
-            
-            @php
-                // Fetch resignation or termination dates
-                $resignation = \App\Models\Resignation::where('employee_id', $employees->id)->first();
-                $termination = \App\Models\Termination::where('employee_id', $employees->id)->first();
-                
-                $endDate = '';
-                if (!empty($resignation->resignation_date)) {
-                    $endDate = date('jS F Y', strtotime($resignation->resignation_date));
-                } elseif (!empty($termination->termination_date)) {
-                    $endDate = date('jS F Y', strtotime($termination->termination_date));
-                } else {
-                    $endDate = 'Present'; // If they haven't left yet
-                }
+            <p style="margin-bottom: 30px;">This is to certify that {{ $genderPrefix }} {{ $fullName }} was employed with <strong>Homified Consultants Pvt Ltd</strong> as <strong>{{ $designation }}</strong> from <strong>{{ $joiningDate }}</strong> to <strong>{{ $endDate }}</strong>.</p>
 
-                $noticeDate = '';
-                if (!empty($resignation->notice_date)) {
-                    $noticeDate = date('jS F Y', strtotime($resignation->notice_date));
-                }
-            @endphp
+            <p style="margin-bottom: 30px;">During their tenure with the organization, they performed their duties diligently and professionally. They were responsible for handling the responsibilities assigned to them and maintained satisfactory Performance and conduct throughout their employment.</p>
 
-            <p style="margin-bottom: 20px; text-align: justify;">This is to formally acknowledge the receipt and acceptance of your resignation letter dated <strong>{{ !empty($noticeDate) ? $noticeDate : '______' }}</strong>, from your position as <strong>{{ !empty($employees->designation->name) ? $employees->designation->name : '' }}</strong> with <strong>{{ env('APP_NAME') }}</strong>.</p>
-
-            <p style="margin-bottom: 20px; text-align: justify;">You have been relieved from your duties with effect from <strong>{{ $endDate }}</strong>, after serving the required notice period and completing all handover formalities. We confirm that there are no dues pending from your side as of your relieving date.</p>
-
-            <p style="margin-bottom: 20px; text-align: justify;">We appreciate your contributions during your tenure with us and wish you all the best in your future professional endeavors.</p>
-
-            <p style="margin-bottom: 30px;">Thank you for your service and dedication.</p>
+            <p style="margin-bottom: 50px;">We appreciate their contribution to the organization and wish them every success in their endeavours.</p>
 
             <p style="margin-bottom: 40px;">Sincerely,</p>
 
             <p style="margin-bottom: 5px;"><strong>Authorized Signatory</strong></p>
-            <p style="margin-bottom: 0;">{{ env('APP_NAME') }}</p>
+            <p style="margin-bottom: 0;">Homified Consultants Pvt Ltd</p>
         </div>
 
     </div>
@@ -89,10 +98,11 @@
         setTimeout(function() {
             var element = document.getElementById('boxes');
             var opt = {
+                margin: 0,
                 filename: '{{$employees->name}}-ExperienceCertificate.pdf',
                 image: {type: 'jpeg', quality: 1},
                 html2canvas: {scale: 2, useCORS: true},
-                jsPDF: {unit: 'in', format: 'A4'}
+                jsPDF: {unit: 'in', format: 'A4', orientation: 'portrait'}
             };
 
             html2pdf().set(opt).from(element).save().then(closeScript);

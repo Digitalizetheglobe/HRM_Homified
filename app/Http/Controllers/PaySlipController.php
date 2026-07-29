@@ -133,14 +133,7 @@ class PaySlipController extends Controller
 
 
         if ($payslip_employee > count($validatePaysilp)) {
-            // Get employees with "Done" status in salary processing for this month/year
-            $doneEmployeeIds = SalaryProcessingStatus::where('year', $year)
-                ->where('month', $month)
-                ->where('status', 'Done')
-                ->pluck('employee_id')
-                ->toArray();
-
-            // Only get employees with salary set (salary > 0) AND status is "Done" in salary processing
+            // Only get employees with salary set (salary > 0)
             $employees = Employee::where('created_by', \Auth::user()->creatorId())
                 ->whereHas('user', function($query) {
                     $query->where('type', 'employee');
@@ -148,8 +141,7 @@ class PaySlipController extends Controller
                 ->where('company_doj', '<=', date($year . '-' . $month . '-t'))
                 ->where('salary', '>', 0) // Only include employees with salary set
                 ->whereNotNull('salary') // Ensure salary is not null
-                ->whereIn('id', $doneEmployeeIds) // Only include employees with "Done" status
-                ->whereNotIn('employee_id', $validatePaysilp)
+                ->whereNotIn('id', $validatePaysilp)
                 ->get();
             
             // Check if there are any employees without salary (for warning message)
@@ -162,24 +154,11 @@ class PaySlipController extends Controller
                     $query->where('salary', '<=', 0)
                           ->orWhereNull('salary');
                 })
-                ->whereNotIn('employee_id', $validatePaysilp)
+                ->whereNotIn('id', $validatePaysilp)
                 ->count();
 
             if ($employees->isEmpty()) {
-                // Check if there are employees but none with "Done" status
-                $totalEmployeesWithSalary = Employee::where('created_by', \Auth::user()->creatorId())
-                    ->whereHas('user', function($query) {
-                        $query->where('type', 'employee');
-                    })
-                    ->where('company_doj', '<=', date($year . '-' . $month . '-t'))
-                    ->where('salary', '>', 0)
-                    ->whereNotNull('salary')
-                    ->whereNotIn('employee_id', $validatePaysilp)
-                    ->count();
-
-                if ($totalEmployeesWithSalary > 0 && count($doneEmployeeIds) == 0) {
-                    return redirect()->route('payslip.index')->with('error', __('No employees with "Done" status found in salary processing. Please mark employees as paid in Salary Processing first.'));
-                } elseif ($employeesWithoutSalary > 0) {
+                if ($employeesWithoutSalary > 0) {
                     return redirect()->route('payslip.index')->with('error', __('No employees with salary set found. Please set employee salary first.'));
                 } else {
                     return redirect()->route('payslip.index')->with('error', __('No employees found for this month.'));
@@ -1119,9 +1098,6 @@ class PaySlipController extends Controller
                 $statusCodes[$date] = 'LOP';
             } else {
                 $statusCodes[$date] = 'LOP';
-            }
-        }
-
             }
         }
 

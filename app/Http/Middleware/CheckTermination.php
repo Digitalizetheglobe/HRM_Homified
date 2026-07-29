@@ -12,6 +12,11 @@ class CheckTermination
 {
     public function handle(Request $request, Closure $next)
     {
+        // Bypass logout check if employee is trying to view their own termination record/details
+        if ($request->routeIs('termination.index') || $request->routeIs('termination.description') || $request->routeIs('termination.show')) {
+            return $next($request);
+        }
+
         if (Auth::check() && Auth::user()->type == 'employee') {
             $employee = Employee::where('user_id', Auth::id())->first();
             

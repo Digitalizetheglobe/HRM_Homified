@@ -28,8 +28,8 @@
                             <label class="form-label">&nbsp;</label>
                             <a href="#" class="btn btn-primary generate-btn-mobile"
                                 onclick="document.getElementById('payslip_form').submit(); return false;"
-                                data-original-title="{{ __('Generate Payslip') }}">
-                                {{ __('Generate Payslip') }}
+                                data-bs-toggle="tooltip" title="{{ __('Generate Payslip') }}">
+                                <i class="ti ti-circle-check text-white"></i>
                             </a>
                         </div>
                     </div>
@@ -74,7 +74,9 @@
                                     {{ Form::open(['route' => ['payslip.export'], 'method' => 'POST', 'id' => 'payslip_form']) }}
                                     <input type="hidden" name="filter_month" class="filter_month">
                                     <input type="hidden" name="filter_year" class="filter_year">
-                                    <input type="submit" value="{{ __('Export') }}" class="btn btn-primary export-btn-mobile">
+                                    <button type="submit" class="btn btn-primary export-btn-mobile" data-bs-toggle="tooltip" title="{{ __('Export') }}">
+                                        <i class="ti ti-file-export text-white"></i>
+                                    </button>
                                     {{ Form::close() }}
                                 @endif
                             </div>
@@ -245,26 +247,12 @@
                                     '{{ __('Payslip') }}' + '</a> ';
                             }
 
-                            if (status == "UnPaid" && data != 0) {
-                                clickToPaid = '<a href="{{ url('payslip/paysalary/') }}/' + id +
-                                    '/' + datePicker + '"  class="view-btn primary-bg btn-sm">' +
-                                    '{{ __('Click To Paid') }}' + '</a>  ';
-                            }
-
                             if (data != 0) {
                                 view =
                                     '<a href="#" data-url="{{ url('payslip/showemployee/') }}/' +
                                     payslip_id +
                                     '"  data-ajax-popup="true" class="view-btn gray-bg" data-title="{{ __('View Employee Detail') }}">' +
                                     '{{ __('View') }}' + '</a>';
-                            }
-
-                            if (data != 0 && status == "UnPaid") {
-                                edit =
-                                    '<a href="#" data-url="{{ url('payslip/editemployee/') }}/' +
-                                    payslip_id +
-                                    '"  data-ajax-popup="true" class="view-btn blue-bg" data-title="{{ __('Edit Employee salary') }}">' +
-                                    '{{ __('Edit') }}' + '</a>';
                             }
 
                             var url = '{{ route('payslip.delete', ':id') }}';
@@ -278,7 +266,7 @@
                                 }
                             @endif
 
-                            return view + payslip + clickToPaid + edit + deleted + form;
+                            return view + payslip + deleted + form;
                         }
 
                         console.clear();
@@ -303,36 +291,19 @@
                                     var payslip =
                                         '<a href="#" data-url="{{ url('payslip/pdf/') }}/' +
                                         id + '/' + datePicker +
-                                        '" data-size="lg"  data-ajax-popup="true" class=" btn-sm btn btn-warning" data-title="{{ __('Employee Payslip') }}">' +
-                                        '{{ __('Payslip') }}' + '</a> ';
+                                        '" data-size="lg"  data-ajax-popup="true" class=" btn-sm btn btn-warning" data-bs-toggle="tooltip" title="{{ __('Employee Payslip') }}">' +
+                                        '<i class="ti ti-receipt text-white"></i></a> ';
                                 }
-                                if (valueOfElement[6] == "UnPaid" && valueOfElement[7] != 0) {
-                                    var clickToPaid =
-                                        '<a href="{{ url('payslip/paysalary/') }}/' + id +
-                                        '/' + datePicker +
-                                        '"  class="btn-sm btn btn-primary">' +
-                                        '{{ __('Click To Paid') }}' + '</a>  ';
-                                } else {
-                                    var clickToPaid = '';
-                                }
-
-                                if (valueOfElement[7] != 0 && valueOfElement[6] == "UnPaid") {
-                                    var edit =
-                                        '<a href="#" data-url="{{ url('payslip/editemployee/') }}/' +
-                                        payslip_id +
-                                        '"  data-ajax-popup="true" class="btn-sm btn btn-info" data-title="{{ __('Edit Employee salary') }}">' +
-                                        '{{ __('Edit') }}' + '</a>';
-                                } else {
-                                    var edit = '';
-                                }
+                                var clickToPaid = '';
+                                var edit = '';
 
                                 var url = '{{ route('payslip.delete', ':id') }}';
                                 url = url.replace(':id', payslip_id);
 
                                 @if (Gate::check('payroll.payslip.delete.all'))
                                     var deleted = '<a href="#"  data-url="' + url +
-                                        '" class="payslip_delete view-btn btn btn-danger ms-1 btn-sm"  >' +
-                                        '{{ __('Delete') }}' + '</a>';
+                                        '" class="payslip_delete view-btn btn btn-danger ms-1 btn-sm" data-bs-toggle="tooltip" title="{{ __('Delete') }}">' +
+                                        '<i class="ti ti-trash text-white"></i></a>';
                                 @else
                                     var deleted = '';
                                 @endif
