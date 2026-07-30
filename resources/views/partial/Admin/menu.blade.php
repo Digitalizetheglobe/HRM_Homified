@@ -250,15 +250,6 @@
                                 </a>
                             </li>
                         @endif
-
-                        <!-- Biometric Attendance -->
-                        @if (Gate::check('attendance.biometric.view.all'))
-                            <li class="dash-item">
-                                <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('biometric-attendance.index') }}">
-                                    {{ __('Biometric Attendance') }}
-                                </a>
-                            </li>
-                        @endif
                     </ul>
                 </li>
             @endif
@@ -360,7 +351,7 @@
                             </li>
                         @endif
                         
-                        @if (Gate::check('payroll.salary_arrears.view.all') || \Auth::user()->type == 'company')
+                        <!-- @if (Gate::check('payroll.salary_arrears.view.all') || \Auth::user()->type == 'company')
                             <li class="dash-item {{ Request::segment(1) == 'salary-arrears' ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('salary-arrears.index') }}">
                                     {{ __('Salary Arrears') }}
@@ -380,15 +371,15 @@
                                     {{ __('Petrol Allowance') }}
                                 </a>
                             </li>
-                        @endif
+                        @endif -->
                         
-                        @if(Gate::check('payroll.payable_days.view.all'))
+                        <!-- @if(Gate::check('payroll.payable_days.view.all'))
                             <li class="dash-item {{ Request::segment(1) == 'payable-days' ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('payable-days.index') }}">
                                     {{ __('Payable Days') }}
                                 </a>
                             </li>
-                        @endif
+                        @endif -->
                         
                         @if ($isFinanceAccountsUser() || \Auth::user()->type == 'company' || Gate::check('payroll.salary_processing.view.all'))
                             <li class="dash-item {{ Request::segment(1) == 'salary-processing' ? 'active' : '' }}">
@@ -581,7 +572,7 @@
             </li> -->
 
             <!-- Recruitment -->
-            @if (Gate::check('Manage Job') || Gate::check('Manage Job Application') || Gate::check('Manage Job OnBoard') || Gate::check('Manage Custom Question') || Gate::check('Manage Interview Schedule') || Gate::check('Manage Career'))
+            <!-- @if (Gate::check('Manage Job') || Gate::check('Manage Job Application') || Gate::check('Manage Job OnBoard') || Gate::check('Manage Custom Question') || Gate::check('Manage Interview Schedule') || Gate::check('Manage Career'))
                 <li class="dash-item dash-hasmenu {{ Request::segment(1) == 'job' || Request::segment(1) == 'job-application' ? 'dash-trigger active' : '' }}">
                     <a href="#!" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                         <span class="dash-micon shadow-none" style="background: none;">
@@ -656,7 +647,7 @@
                         @endcan
                     </ul>
                 </li>
-            @endif
+            @endif -->
 
 
 
@@ -687,7 +678,7 @@
 
 
             <!-- Loan -->
-            @if (\Auth::user()->type == 'company')
+            <!-- @if (\Auth::user()->type == 'company')
                 <li class="dash-item {{ Request::segment(1) == 'loan' ? 'active' : '' }}">
                     <a href="{{ route('loan.index') }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                         <span class="dash-micon shadow-none" style="background: none;">
@@ -696,7 +687,7 @@
                         <span class="dash-mtext flex-grow">{{ __('Loan') }}</span>
                     </a>
                 </li>
-            @endif
+            @endif -->
 
             <!-- Exit Formalities -->
             @if(Gate::check('exit.resignation.view.own') || Gate::check('exit.resignation.view.all') || Gate::check('exit.termination.view.own') || Gate::check('exit.termination.view.all'))
