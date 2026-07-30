@@ -381,15 +381,17 @@
                                 })
                             }).bindPopup(`<b>Start Location</b><br>Time: ${start.time}<br><a href="${startUrl}" target="_blank" class="btn btn-sm btn-link p-0 text-primary mt-1"><i class="ti ti-map-pin"></i> Open in Google Maps</a>`).addTo(markersGroup);
 
-                            // Draw end point marker (last coordinate of route for selected date)
-                            const end = route[route.length - 1];
-                            const endUrl = `https://www.google.com/maps/search/?api=1&query=${end.lat},${end.lng}`;
-                            L.marker([end.lat, end.lng], {
-                                icon: L.divIcon({
-                                    className: 'leaflet-div-icon-end',
-                                    iconSize: [12, 12]
-                                })
-                            }).bindPopup(`<b>End Location</b><br>Time: ${end.time}<br><a href="${endUrl}" target="_blank" class="btn btn-sm btn-link p-0 text-primary mt-1"><i class="ti ti-map-pin"></i> Open in Google Maps</a>`).addTo(markersGroup);
+                            // Draw end point marker (last coordinate of route for selected date) if they have clocked out
+                            if (!response.is_clocked_in) {
+                                const end = route[route.length - 1];
+                                const endUrl = `https://www.google.com/maps/search/?api=1&query=${end.lat},${end.lng}`;
+                                L.marker([end.lat, end.lng], {
+                                    icon: L.divIcon({
+                                        className: 'leaflet-div-icon-end',
+                                        iconSize: [12, 12]
+                                    })
+                                }).bindPopup(`<b>End Location</b><br>Time: ${end.time}<br><a href="${endUrl}" target="_blank" class="btn btn-sm btn-link p-0 text-primary mt-1"><i class="ti ti-map-pin"></i> Open in Google Maps</a>`).addTo(markersGroup);
+                            }
 
                             $('#total_points').text(route.length);
                             $('#status_text').html('<span class="text-success"><i class="ti ti-circle-filled"></i> Route Tracked</span>');

@@ -1348,20 +1348,12 @@
                         });
                     }
 
-                    // Wake-lock & background execution mechanism (Silent audio loop)
-                    function enableBackgroundExecution() {
-                        // Create and play silent HTML5 Audio
-                        if (!silentAudio) {
-                            silentAudio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA=');
-                            silentAudio.loop = true;
-                        }
-                        silentAudio.play().then(() => {
-                            console.log("Background audio wake-lock active.");
-                        }).catch(err => {
-                            console.warn("Audio autoplay blocked, waiting for interaction.");
-                        });
+                    // Wake-lock & background execution mechanism (Active silent tone generation)
+                    let audioCtx = null;
+                    let oscillator = null;
+                    let gainNode = null;
 
-                        // Create and resume Web Audio Context
+                    function enableBackgroundExecution() {
                         try {
                             if (!audioCtx) {
                                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1369,14 +1361,22 @@
                             if (audioCtx.state === 'suspended') {
                                 audioCtx.resume();
                             }
-                            const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
-                            const source = audioCtx.createBufferSource();
-                            source.buffer = buffer;
-                            source.loop = true;
-                            source.connect(audioCtx.destination);
-                            source.start();
+                            
+                            if (!oscillator) {
+                                oscillator = audioCtx.createOscillator();
+                                oscillator.type = 'sine';
+                                oscillator.frequency.value = 440; // Standard pitch
+                                
+                                gainNode = audioCtx.createGain();
+                                gainNode.gain.value = 0.00001; // Virtually silent to the ear, but registers as active audio stream to OS
+                                
+                                oscillator.connect(gainNode);
+                                gainNode.connect(audioCtx.destination);
+                                oscillator.start();
+                                console.log("Background wake-lock audio tone active.");
+                            }
                         } catch (e) {
-                            console.warn("Web Audio Context background setup failed: ", e);
+                            console.warn("Web Audio background wake-lock failed: ", e);
                         }
 
                         // Remove event listeners once activated
@@ -1388,7 +1388,6 @@
                     document.addEventListener('click', enableBackgroundExecution);
                     document.addEventListener('touchstart', enableBackgroundExecution);
 
-                    // Start tracking immediately
                     startTracking();
                 })();
             </script>

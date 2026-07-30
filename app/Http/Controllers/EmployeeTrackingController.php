@@ -168,10 +168,26 @@ class EmployeeTrackingController extends Controller
             ];
         }
 
+        // Check if the employee is currently clocked in on this date
+        $isClockedIn = false;
+        $attendance = AttendanceEmployee::where('employee_id', $employeeId)
+            ->where('date', $date)
+            ->first();
+        if ($attendance) {
+            $slot1Active = !empty($attendance->clock_in) && 
+                           (empty($attendance->clock_out) || $attendance->clock_out === '00:00:00');
+            $slot2Active = !empty($attendance->clock_in_2) && $attendance->clock_in_2 !== '00:00:00' && 
+                           (empty($attendance->clock_out_2) || $attendance->clock_out_2 === '00:00:00');
+            if ($slot1Active || $slot2Active) {
+                $isClockedIn = true;
+            }
+        }
+
         return response()->json([
             'success' => true,
             'route' => $formattedLogs,
-            'current_location' => $currentLocation
+            'current_location' => $currentLocation,
+            'is_clocked_in' => $isClockedIn
         ]);
     }
 }
