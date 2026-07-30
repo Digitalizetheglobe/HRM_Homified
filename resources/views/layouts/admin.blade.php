@@ -1238,33 +1238,109 @@
         @if($isClockedIn)
             <script>
                 (function() {
-                    function sendLocation() {
+                    let lastLat = null;
+                    let lastLng = null;
+                    let lastPingTime = 0;
+                    let watchId = null;
+                    let audioCtx = null;
+                    let silentAudio = null;
+
+                    // Haversine formula to calculate distance in meters
+                    function getDistance(lat1, lon1, lat2, lon2) {
+                        const R = 6371000; // Earth radius in meters
+                        const dLat = (lat2 - lat1) * Math.PI / 180;
+                        const dLon = (lon2 - lon1) * Math.PI / 180;
+                        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                        return R * c;
+                    }
+
+                    function sendLocationData(lat, lng, source) {
+                        const now = Date.now();
+                        let shouldLog = false;
+                        let reason = "";
+
+                        if (lastLat === null || lastLng === null) {
+                            shouldLog = true;
+                            reason = "Initial location";
+                        } else {
+                            const distance = getDistance(lastLat, lastLng, lat, lng);
+                            const timeElapsed = now - lastPingTime;
+
+                            // Log if user moved >= 15 meters and at least 15 seconds elapsed (throttling)
+                            if (distance >= 15 && timeElapsed >= 15000) {
+                                shouldLog = true;
+                                reason = `Moved ${distance.toFixed(1)}m`;
+                            } 
+                            // Or if 2 minutes (120,000 ms) have passed since the last ping (heartbeat)
+                            else if (timeElapsed >= 120000) {
+                                shouldLog = true;
+                                reason = "Periodic heartbeat (2 mins elapsed)";
+                            }
+                        }
+
+                        if (!shouldLog) {
+                            return;
+                        }
+
+                        lastLat = lat;
+                        lastLng = lng;
+                        lastPingTime = now;
+
+                        $.ajax({
+                            url: "{{ route('employee.ping-location') }}",
+                            type: "POST",
+                            data: {
+                                latitude: lat,
+                                longitude: lng,
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                console.log(`[${source}] Location tracked: `, response.message, `Reason: ${reason} (${lat}, ${lng})`);
+                            },
+                            error: function(xhr) {
+                                console.error("Location tracking error", xhr);
+                            }
+                        });
+                    }
+
+                    function startTracking() {
                         if (!navigator.geolocation) {
                             console.log("Geolocation is not supported by this browser.");
                             return;
                         }
 
-                        navigator.geolocation.getCurrentPosition(function(position) {
+                        // 1. Live watch position tracking
+                        watchId = navigator.geolocation.watchPosition(function(position) {
                             const lat = position.coords.latitude;
                             const lng = position.coords.longitude;
-
-                            $.ajax({
-                                url: "{{ route('employee.ping-location') }}",
-                                type: "POST",
-                                data: {
-                                    latitude: lat,
-                                    longitude: lng,
-                                    _token: "{{ csrf_token() }}"
-                                },
-                                success: function(response) {
-                                    console.log("Location tracked: ", response.message);
-                                },
-                                error: function(xhr) {
-                                    console.error("Location tracking error", xhr);
-                                }
-                            });
+                            sendLocationData(lat, lng, "Watch");
                         }, function(error) {
-                            console.warn("Geolocation warning: ", error.message);
+                            console.warn("Geolocation watchPosition error: ", error.message);
+                            fallbackGetCurrentPosition();
+                        }, {
+                            enableHighAccuracy: true,
+                            timeout: 15000,
+                            maximumAge: 0
+                        });
+
+                        // 2. Periodic fallback check every 60 seconds
+                        setInterval(fallbackGetCurrentPosition, 60000);
+                        
+                        // Initial fetch
+                        fallbackGetCurrentPosition();
+                    }
+
+                    function fallbackGetCurrentPosition() {
+                        if (!navigator.geolocation) return;
+                        navigator.geolocation.getCurrentPosition(position => {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            sendLocationData(lat, lng, "Fallback");
+                        }, error => {
+                            console.warn("Geolocation fallback getCurrentPosition error: ", error.message);
                         }, {
                             enableHighAccuracy: true,
                             timeout: 10000,
@@ -1272,9 +1348,48 @@
                         });
                     }
 
-                    // Ping location immediately, then every 2 minutes (120000 ms)
-                    sendLocation();
-                    setInterval(sendLocation, 120000);
+                    // Wake-lock & background execution mechanism (Silent audio loop)
+                    function enableBackgroundExecution() {
+                        // Create and play silent HTML5 Audio
+                        if (!silentAudio) {
+                            silentAudio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA=');
+                            silentAudio.loop = true;
+                        }
+                        silentAudio.play().then(() => {
+                            console.log("Background audio wake-lock active.");
+                        }).catch(err => {
+                            console.warn("Audio autoplay blocked, waiting for interaction.");
+                        });
+
+                        // Create and resume Web Audio Context
+                        try {
+                            if (!audioCtx) {
+                                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                            }
+                            if (audioCtx.state === 'suspended') {
+                                audioCtx.resume();
+                            }
+                            const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+                            const source = audioCtx.createBufferSource();
+                            source.buffer = buffer;
+                            source.loop = true;
+                            source.connect(audioCtx.destination);
+                            source.start();
+                        } catch (e) {
+                            console.warn("Web Audio Context background setup failed: ", e);
+                        }
+
+                        // Remove event listeners once activated
+                        document.removeEventListener('click', enableBackgroundExecution);
+                        document.removeEventListener('touchstart', enableBackgroundExecution);
+                    }
+
+                    // Listen for interaction to play silent audio bypass browser autoplay blocks
+                    document.addEventListener('click', enableBackgroundExecution);
+                    document.addEventListener('touchstart', enableBackgroundExecution);
+
+                    // Start tracking immediately
+                    startTracking();
                 })();
             </script>
         @endif
