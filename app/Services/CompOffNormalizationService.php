@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 class CompOffNormalizationService
 {
     /** Same exclusion list as other comp-off processors in this project */
-    public const EXCLUDED_EMPLOYEE_IDS = [4, 13, 22, 23];
+    public const EXCLUDED_EMPLOYEE_IDS = [];
 
     public const REPORT_SAMPLE_LIMIT = 150;
 

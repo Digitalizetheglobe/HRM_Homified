@@ -20,7 +20,7 @@ class BackfillController extends Controller
         
         foreach ($employees as $employee) {
             // Exclude specific employees from comp-off
-            $excludedEmployeeIds = [4, 13, 22, 23];
+            $excludedEmployeeIds = [];
             if (in_array($employee->id, $excludedEmployeeIds)) {
                 continue;
             }

@@ -133,7 +133,6 @@
                                     $compOffTypeId = \App\Models\LeaveType::where('title', 'Comp-Off')->value('id') ?? 0;
                                     
                                     $query = \DB::table('employees')
-                                        ->whereNotIn('employees.id', [4, 13, 22, 23])
                                         ->whereNotIn('employees.id', function($q) {
                                             $q->select('employee_id')->from('terminations');
                                         });

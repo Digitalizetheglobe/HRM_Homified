@@ -384,7 +384,7 @@ class HomeController extends Controller
                     ->toArray();
 
                 // Define excluded employee IDs for dashboard widgets
-                $excludedDashboardIds = [4, 13, 22, 23];
+                $excludedDashboardIds = [];
                 // Combine terminated and excluded IDs for robust filtering
                 $allExcludedIds = array_merge($terminatedEmployeeIds, $excludedDashboardIds);
 
