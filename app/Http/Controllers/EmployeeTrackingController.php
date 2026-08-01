@@ -139,35 +139,6 @@ class EmployeeTrackingController extends Controller
             ], 422);
         }
 
-        // Fetch location logs for the specific date
-        $logs = EmployeeLocationLog::where('employee_id', $employeeId)
-            ->whereDate('pinged_at', $date)
-            ->orderBy('pinged_at', 'asc')
-            ->get(['latitude', 'longitude', 'pinged_at']);
-
-        // Format dates for display
-        $formattedLogs = $logs->map(function ($log) {
-            return [
-                'lat' => (float)$log->latitude,
-                'lng' => (float)$log->longitude,
-                'time' => $log->pinged_at->format('h:i A'),
-            ];
-        });
-
-        // Also fetch the employee's last active location (latest log overall)
-        $latestLog = EmployeeLocationLog::where('employee_id', $employeeId)
-            ->orderBy('pinged_at', 'desc')
-            ->first(['latitude', 'longitude', 'pinged_at']);
-
-        $currentLocation = null;
-        if ($latestLog) {
-            $currentLocation = [
-                'lat' => (float)$latestLog->latitude,
-                'lng' => (float)$latestLog->longitude,
-                'time' => $latestLog->pinged_at->diffForHumans(),
-            ];
-        }
-
         // Check if the employee is currently clocked in on this date
         $isClockedIn = false;
         $attendance = AttendanceEmployee::where('employee_id', $employeeId)
@@ -181,6 +152,85 @@ class EmployeeTrackingController extends Controller
             if ($slot1Active || $slot2Active) {
                 $isClockedIn = true;
             }
+        }
+
+        // Fetch location logs for the specific date
+        $logs = EmployeeLocationLog::where('employee_id', $employeeId)
+            ->whereDate('pinged_at', $date)
+            ->orderBy('pinged_at', 'asc')
+            ->get(['latitude', 'longitude', 'pinged_at']);
+
+        // Format dates for display
+        $formattedLogs = $logs->map(function ($log) {
+            return [
+                'lat' => (float)$log->latitude,
+                'lng' => (float)$log->longitude,
+                'time' => $log->pinged_at->format('h:i A'),
+            ];
+        })->toArray();
+
+        // Prepend clock-in location if available and not already matching first log
+        if ($attendance && !empty($attendance->clock_in_latitude) && !empty($attendance->clock_in_longitude)) {
+            $clockInTimeFormatted = Carbon::parse($attendance->clock_in)->format('h:i A');
+            $hasStart = false;
+            if (count($formattedLogs) > 0) {
+                $dist = abs((float)$formattedLogs[0]['lat'] - (float)$attendance->clock_in_latitude) +
+                        abs((float)$formattedLogs[0]['lng'] - (float)$attendance->clock_in_longitude);
+                if ($dist < 0.0001) {
+                    $hasStart = true;
+                }
+            }
+            if (!$hasStart) {
+                array_unshift($formattedLogs, [
+                    'lat' => (float)$attendance->clock_in_latitude,
+                    'lng' => (float)$attendance->clock_in_longitude,
+                    'time' => $clockInTimeFormatted,
+                ]);
+            }
+        }
+
+        // Append clock-out location if available and not already matching last log
+        if ($attendance && !empty($attendance->clock_out) && $attendance->clock_out !== '00:00:00' &&
+            !empty($attendance->clock_out_latitude) && !empty($attendance->clock_out_longitude)) {
+            $clockOutTimeFormatted = Carbon::parse($attendance->clock_out)->format('h:i A');
+            $hasEnd = false;
+            $count = count($formattedLogs);
+            if ($count > 0) {
+                $dist = abs((float)$formattedLogs[$count - 1]['lat'] - (float)$attendance->clock_out_latitude) +
+                        abs((float)$formattedLogs[$count - 1]['lng'] - (float)$attendance->clock_out_longitude);
+                if ($dist < 0.0001) {
+                    $hasEnd = true;
+                }
+            }
+            if (!$hasEnd) {
+                $formattedLogs[] = [
+                    'lat' => (float)$attendance->clock_out_latitude,
+                    'lng' => (float)$attendance->clock_out_longitude,
+                    'time' => $clockOutTimeFormatted,
+                ];
+            }
+        }
+
+        // Also fetch the employee's last active location (latest log on the selected date)
+        $latestLog = EmployeeLocationLog::where('employee_id', $employeeId)
+            ->whereDate('pinged_at', $date)
+            ->orderBy('pinged_at', 'desc')
+            ->first(['latitude', 'longitude', 'pinged_at']);
+
+        $currentLocation = null;
+        if ($latestLog) {
+            $currentLocation = [
+                'lat' => (float)$latestLog->latitude,
+                'lng' => (float)$latestLog->longitude,
+                'time' => $latestLog->pinged_at->diffForHumans(),
+            ];
+        } else if ($attendance && !empty($attendance->clock_in_latitude) && !empty($attendance->clock_in_longitude)) {
+            $capturedAt = $attendance->clock_in_location_captured_at ? Carbon::parse($attendance->clock_in_location_captured_at) : Carbon::parse($attendance->date . ' ' . $attendance->clock_in);
+            $currentLocation = [
+                'lat' => (float)$attendance->clock_in_latitude,
+                'lng' => (float)$attendance->clock_in_longitude,
+                'time' => $capturedAt->diffForHumans(),
+            ];
         }
 
         return response()->json([
