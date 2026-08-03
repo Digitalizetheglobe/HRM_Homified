@@ -10,11 +10,13 @@
 @endsection
 
 @section('action-button')
-    <a href="#" data-url="{{ route('todo.create') }}" data-ajax-popup="true"
-        data-title="{{ __('Create New ToDo') }}" data-size="lg"
-        class="btn btn-sm btn-primary">
-        <i class="ti ti-plus"></i>
-    </a>
+    @if(Gate::check('todo.manage.create.own') || Gate::check('todo.manage.create.all') || Gate::check('Manage ToDoList'))
+        <a href="#" data-url="{{ route('todo.create') }}" data-ajax-popup="true"
+            data-title="{{ __('Create New ToDo') }}" data-size="lg"
+            class="btn btn-sm btn-primary">
+            <i class="ti ti-plus"></i>
+        </a>
+    @endif
 @endsection
         
 
@@ -68,7 +70,7 @@
                                         {!! Form::open([
                                             'method' => 'DELETE',
                                             'route' => ['todo.destroy', $task->id],
-                                            
+                                            'id' => 'delete-form-' . $task->id,
                                         ]) !!}
                                         <a href="#"
                                             class="mx-3 btn btn-sm align-items-center bs-pass-para" aria-label="{{ __('Delete') }}"

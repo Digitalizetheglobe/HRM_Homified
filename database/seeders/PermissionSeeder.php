@@ -91,9 +91,37 @@ class PermissionSeeder extends Seeder
             'payroll.payable_days.view.own',
             'company_policy.manage.view.own',
             
+            // --- HOLIDAY MODULE ---
+            'holiday.manage.view.own',
+            'holiday.manage.view.all',
+            'holiday.manage.create.all',
+            'holiday.manage.edit.all',
+            'holiday.manage.delete.all',
+
+            // --- TO-DO MODULE ---
+            'todo.manage.view.own',
+            'todo.manage.create.own',
+            'todo.manage.edit.own',
+            'todo.manage.delete.own',
+            'todo.manage.view.all',
+            'todo.manage.create.all',
+            'todo.manage.edit.all',
+            'todo.manage.delete.all',
+
+            // --- NOTICE MODULE ---
+            'notice.manage.view.own',
+            'notice.manage.view.all',
+            'notice.manage.create.all',
+            'notice.manage.edit.all',
+            'notice.manage.delete.all',
+            
             // --- CONSTANTS / SYSTEM SETUP ---
             'setup.hrm.view.company',
             'setup.hrm.edit.company',
+            'setup.hrm.view.all',
+            'setup.hrm.create.all',
+            'setup.hrm.edit.all',
+            'setup.hrm.delete.all',
         ];
 
         // Seed the permissions

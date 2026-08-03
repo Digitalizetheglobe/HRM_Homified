@@ -16,7 +16,7 @@ class HolidayController extends Controller
 
     public function index(Request $request)
     {
-        if (\Auth::user()->can('Manage Holiday')) {
+        if (\Auth::user()->can('Manage Holiday') || \Auth::user()->can('holiday.manage.view.own') || \Auth::user()->can('holiday.manage.view.all')) {
             $holidays = LocalHoliday::where('created_by', '=', \Auth::user()->creatorId());
 
             if (!empty($request->start_date)) {
@@ -36,7 +36,7 @@ class HolidayController extends Controller
 
     public function create()
     {
-        if (\Auth::user()->can('Create Holiday')) {
+        if (\Auth::user()->can('Create Holiday') || \Auth::user()->can('holiday.manage.create.all')) {
             return view('holiday.create');
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
@@ -46,7 +46,7 @@ class HolidayController extends Controller
 
     public function store(Request $request)
     {
-        if (\Auth::user()->can('Create Holiday')) {
+        if (\Auth::user()->can('Create Holiday') || \Auth::user()->can('holiday.manage.create.all')) {
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -138,7 +138,7 @@ class HolidayController extends Controller
 
     public function edit(LocalHoliday $holiday)
     {
-        if (\Auth::user()->can('Edit Holiday')) {
+        if (\Auth::user()->can('Edit Holiday') || \Auth::user()->can('holiday.manage.edit.all')) {
             return view('holiday.edit', compact('holiday'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
@@ -148,7 +148,7 @@ class HolidayController extends Controller
 
     public function update(Request $request, LocalHoliday $holiday)
     {
-        if (\Auth::user()->can('Edit Holiday')) {
+        if (\Auth::user()->can('Edit Holiday') || \Auth::user()->can('holiday.manage.edit.all')) {
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -181,7 +181,7 @@ class HolidayController extends Controller
 
     public function destroy(LocalHoliday $holiday)
     {
-        if (\Auth::user()->can('Delete Holiday')) {
+        if (\Auth::user()->can('Delete Holiday') || \Auth::user()->can('holiday.manage.delete.all')) {
             $holiday->delete();
 
             return redirect()->route('holiday.index')->with(

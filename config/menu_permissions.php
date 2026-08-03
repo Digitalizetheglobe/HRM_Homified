@@ -362,4 +362,77 @@ return [
             ],
         ],
     ],
+    'Holiday' => [
+        'Manage Holiday' => [
+            'Own Holiday' => [
+                'actions' => [
+                    'Page Access' => 'holiday.manage.view.own',
+                ],
+                'supports_data_scope' => false,
+            ],
+            'Employees Holiday' => [
+                'actions' => [
+                    'Page Access' => 'holiday.manage.view.all',
+                    'Create'      => 'holiday.manage.create.all',
+                    'Edit'        => 'holiday.manage.edit.all',
+                    'Delete'      => 'holiday.manage.delete.all',
+                ],
+                'supports_data_scope' => false,
+            ],
+        ],
+    ],
+    'To-Do' => [
+        'To-Do List' => [
+            'Own To-Do' => [
+                'actions' => [
+                    'Page Access' => 'todo.manage.view.own',
+                    'Create'      => 'todo.manage.create.own',
+                    'Edit'        => 'todo.manage.edit.own',
+                    'Delete'      => 'todo.manage.delete.own',
+                ],
+                'supports_data_scope' => false,
+            ],
+            'Employees To-Do' => [
+                'actions' => [
+                    'Page Access' => 'todo.manage.view.all',
+                    'Create'      => 'todo.manage.create.all',
+                    'Edit'        => 'todo.manage.edit.all',
+                    'Delete'      => 'todo.manage.delete.all',
+                ],
+                'supports_data_scope' => false,
+            ],
+        ],
+    ],
+    'Notice' => [
+        'Manage Notice' => [
+            'Own Notice' => [
+                'actions' => [
+                    'Page Access' => 'notice.manage.view.own',
+                ],
+                'supports_data_scope' => false,
+            ],
+            'Employees Notice' => [
+                'actions' => [
+                    'Page Access' => 'notice.manage.view.all',
+                    'Create'      => 'notice.manage.create.all',
+                    'Edit'        => 'notice.manage.edit.all',
+                    'Delete'      => 'notice.manage.delete.all',
+                ],
+                'supports_data_scope' => false,
+            ],
+        ],
+    ],
+    'HRM System Setup' => [
+        'HRM System Setup' => [
+            'Setup' => [
+                'actions' => [
+                    'Page Access' => 'setup.hrm.view.all',
+                    'Create'      => 'setup.hrm.create.all',
+                    'Edit'        => 'setup.hrm.edit.all',
+                    'Delete'      => 'setup.hrm.delete.all',
+                ],
+                'supports_data_scope' => false,
+            ],
+        ],
+    ],
 ];

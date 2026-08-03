@@ -499,7 +499,7 @@
                 @endif
             @endif
 
-            @if(\Auth::user()->type == 'company')
+            @if(Gate::check('holiday.manage.view.own') || Gate::check('holiday.manage.view.all') || Gate::check('Manage Holiday') || \Auth::user()->type == 'company')
                 <li class="dash-item {{ Request::segment(1) == 'holiday' ? 'active' : '' }}">
                     <a href="{{ route('holiday.index') }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                         <span class="dash-micon shadow-none" style="background: none;">
@@ -652,7 +652,7 @@
 
 
             <!-- To-Do List -->
-            @if (Gate::check('Manage ToDoList'))
+            @if (Gate::check('Manage ToDoList') || Gate::check('todo.manage.view.own') || Gate::check('todo.manage.view.all'))
             <li class="dash-item {{ Request::segment(1) == 'todo' ? 'active' : '' }}">
                 <a href="{{ route('todo.index') }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                     <span class="dash-micon shadow-none" style="background: none;">
@@ -664,7 +664,7 @@
             @endif
 
             <!-- Notice -->
-            @if (Gate::check('Manage Notice'))
+            @if (Gate::check('Manage Notice') || Gate::check('notice.manage.view.own') || Gate::check('notice.manage.view.all'))
             <li class="dash-item {{ Request::segment(1) == 'notices' ? 'active' : '' }}">
                 <a href="{{ route('notices.index') }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                     <span class="dash-micon shadow-none" style="background: none;">
@@ -763,7 +763,8 @@
 
             
             <!--constant-->
-            @if (Gate::check('Manage Department') ||
+            @if (Gate::check('setup.hrm.view.all') ||
+                    Gate::check('Manage Department') ||
                     Gate::check('Manage Designation') ||
                     Gate::check('Manage Document Type') ||
                     Gate::check('Manage Branch') ||

@@ -50,8 +50,8 @@
     @endif
 
 
-    @if ((!request('own') && Gate::check('leave.manage.create.all')) || (request('own') && Gate::check('leave.manage.create.own')))
-        <a href="#" data-url="{{ route('leave.create') }}{{ request('own') ? '?own=1' : '' }}" data-ajax-popup="true"
+    @if (Gate::check('leave.manage.create.all') || Gate::check('leave.manage.create.own'))
+        <a href="#" data-url="{{ route('leave.create') }}{{ (request('own') || \Auth::user()->type == 'employee') ? '?own=1' : '' }}" data-ajax-popup="true"
             data-title="{{ __('Create New Leave') }}" data-size="lg"
             class="btn btn-sm btn-primary">
             <i class="ti ti-plus"></i>

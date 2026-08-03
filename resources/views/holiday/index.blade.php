@@ -26,12 +26,12 @@
         <i class="ti ti-calendar"></i>
     </a>
 
-    @can('Create Holiday')
+    @if (Gate::check('Create Holiday') || Gate::check('holiday.manage.create.all'))
         <a href="#" data-url="{{ route('holiday.create') }}" data-ajax-popup="true"
             data-title="{{ __('Create New Holiday') }}" class="btn btn-sm btn-primary">
             <i class="ti ti-plus"></i>
         </a>
-    @endcan
+    @endif
 @endsection
 
 @section('content')
@@ -97,7 +97,7 @@
                                 <th>{{ __('Occasion') }}</th>
                                 <th>{{ __('Start Date') }}</th>
                                 <th>{{ __('End Date') }}</th>
-                                @if (Gate::check('Edit Holiday') || Gate::check('Delete Holiday'))
+                                @if (Gate::check('Edit Holiday') || Gate::check('Delete Holiday') || Gate::check('holiday.manage.edit.all') || Gate::check('holiday.manage.delete.all'))
                                     <th width="200px">{{ __('Action') }}</th>
                                 @endif
                             </tr>
@@ -108,10 +108,10 @@
                                     <td>{{ $holiday->occasion }}</td>
                                     <td>{{ \Auth::user()->dateFormat($holiday->start_date) }}</td>
                                     <td>{{ \Auth::user()->dateFormat($holiday->end_date) }}</td>
-                                    @if (Gate::check('Edit Holiday') || Gate::check('Delete Holiday'))
+                                    @if (Gate::check('Edit Holiday') || Gate::check('Delete Holiday') || Gate::check('holiday.manage.edit.all') || Gate::check('holiday.manage.delete.all'))
                                         <td class="Action">
                                             <span>
-                                                @can('Edit Holiday')
+                                                @if (Gate::check('Edit Holiday') || Gate::check('holiday.manage.edit.all'))
                                                     <div class="action-btn bg-info ms-2">
                                                         <a href="#" class="mx-3 btn btn-sm  align-items-center"
                                                             data-url="{{ route('holiday.edit', $holiday->id) }}"
@@ -119,9 +119,9 @@
                                                             <i class="ti ti-pencil text-white"></i>
                                                         </a>
                                                     </div>
-                                                @endcan
+                                                @endif
 
-                                                @can('Delete Holiday')
+                                                @if (Gate::check('Delete Holiday') || Gate::check('holiday.manage.delete.all'))
                                                     <div class="action-btn bg-danger ms-2">
                                                         {!! Form::open([
                                                             'method' => 'DELETE',
@@ -133,7 +133,7 @@
                                                                 class="ti ti-trash text-white text-white"></i></a>
                                                         </form>
                                                     </div>
-                                                @endcan
+                                                @endif
                                             </span>
                                         </td>
                                     @endif

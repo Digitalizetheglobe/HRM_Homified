@@ -12,12 +12,12 @@
 @section('action-button')
     @if(Auth::user()->type != 'hr') {{-- Only show export and create for non-HR users --}}
         <div class="row align-items-center m-1">
-            @can('Create Employee')
+            @if(Gate::check('notice.manage.create.all') || Gate::check('Create Employee'))
                 <a href="#" data-size="lg" data-url="{{ route('notices.create') }}" data-ajax-popup="true" data-title="{{ __('Add New Notice') }}"
                     class="btn btn-sm btn-primary">
                     <i class="ti ti-plus"></i>
                 </a>
-            @endcan
+            @endif
         </div>
     @endif
 @endsection
@@ -35,7 +35,7 @@
                                 <th class="text-start">{{ __('Description') }}</th>
                                 <th class="text-start">{{ __('Start Date') }}</th>
                                 <th class="text-start">{{ __('End Date') }}</th>
-                                @if (Auth::user()->type != 'hr' && (Gate::check('Edit Meeting') || Gate::check('Delete Meeting')))
+                                @if (Auth::user()->type != 'hr' && (Gate::check('Edit Meeting') || Gate::check('Delete Meeting') || Gate::check('notice.manage.edit.all') || Gate::check('notice.manage.delete.all')))
                                     <th class="text-center" width="130px">{{ __('Actions') }}</th>
                                 @endif
                             </tr>
@@ -47,9 +47,9 @@
                                     <td class="text-start">{{ Str::limit($notice->description, 50) }}</td>
                                     <td class="text-start">{{ $notice->notice_startdate ? \Carbon\Carbon::parse($notice->notice_startdate)->format('d M Y') : '-' }}</td>
                                     <td class="text-start">{{ $notice->notice_enddate ? \Carbon\Carbon::parse($notice->notice_enddate)->format('d M Y') : '-' }}</td>
-                                    @if (Auth::user()->type != 'hr' && (Gate::check('Edit Meeting') || Gate::check('Delete Meeting')))
+                                    @if (Auth::user()->type != 'hr' && (Gate::check('Edit Meeting') || Gate::check('Delete Meeting') || Gate::check('notice.manage.edit.all') || Gate::check('notice.manage.delete.all')))
                                         <td class="text-center d-flex gap-2 justify-content-center">
-                                            @can('Edit Meeting')
+                                            @if (Gate::check('Edit Meeting') || Gate::check('notice.manage.edit.all'))
                                                 <!-- Edit Button -->
                                                 <a href="#" 
                                                     class="btn btn-sm btn-info text-white" 
@@ -59,9 +59,9 @@
                                                     data-title="{{ __('Edit Notice') }}">
                                                     <i class="ti ti-pencil"></i>
                                                 </a>
-                                            @endcan
+                                            @endif
 
-                                            @can('Delete Meeting')
+                                            @if (Gate::check('Delete Meeting') || Gate::check('notice.manage.delete.all'))
                                                 <!-- Delete Button with Form -->
                                                 <form id="delete-form-{{ $notice->id }}" method="POST" action="{{ route('notices.destroy', $notice->id) }}" style="display: inline;">
                                                     @csrf
@@ -72,7 +72,7 @@
                                                     onclick="event.preventDefault(); document.getElementById('delete-form-{{ $notice->id }}').submit();">
                                                     <i class="ti ti-trash text-white"></i>
                                                 </a>
-                                            @endcan
+                                            @endif
                                         </td>
                                     @endif
                                 </tr>

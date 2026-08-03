@@ -39,6 +39,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\CheckEmployeeApproval::class,
             \App\Http\Middleware\CheckTermination::class,
+            \App\Http\Middleware\CheckHrmSetupPermission::class,
         ],
 
         'api' => [
