@@ -408,6 +408,15 @@
         </div>
     </div>
 
+    <!-- Diagnostic Warning Alert Banner -->
+    <div id="diagnostic_alert_banner" class="alert d-none align-items-center mb-4 p-3 shadow-sm" role="alert" style="border-radius: 12px; border-left: 5px solid #ef4444 !important;">
+        <i id="diagnostic_alert_icon" class="ti ti-alert-triangle-filled fs-2 me-3 flex-shrink-0"></i>
+        <div>
+            <strong id="diagnostic_alert_title" class="d-block mb-1" style="font-size: 0.95rem;">Tracking Signal Status</strong>
+            <div id="diagnostic_alert_text" class="small">Diagnostic information will appear here.</div>
+        </div>
+    </div>
+
     <!-- Map & Visited Places Timeline Section -->
     <div class="row">
         <!-- Map Column -->
@@ -656,11 +665,39 @@
                         const isClockedIn = response.is_clocked_in;
                         const hasClockIn = response.has_clock_in;
                         const hasClockOut = response.has_clock_out;
+                        const healthStatus = response.health_status;
+                        const diagMessage = response.diagnostic_message;
+                        const minsAgo = response.mins_since_last_ping;
 
-                        // 1. Update Metrics Cards
-                        if (isClockedIn) {
-                            $('#stat_status').html('<span class="text-success"><i class="ti ti-circle-filled fs-6 me-1"></i> Clocked In</span>');
-                            $('#stat_status_sub').text('Live tracking active');
+                        // 1. Update Diagnostic Warning Banner & Status Metrics Cards
+                        $('#diagnostic_alert_banner').addClass('d-none').removeClass('alert-danger alert-warning alert-info alert-success');
+
+                        if (healthStatus === 'signal_lost') {
+                            $('#diagnostic_alert_banner').removeClass('d-none').addClass('alert-danger d-flex');
+                            $('#diagnostic_alert_title').text('🔴 TRACKING SIGNAL LOST (Location Updates Stopped)').attr('class', 'text-danger d-block mb-1');
+                            $('#diagnostic_alert_text').text(diagMessage);
+                            
+                            $('#stat_status').html('<span class="text-danger"><i class="ti ti-alert-triangle-filled me-1"></i> Signal Lost</span>');
+                            $('#stat_status_sub').text(`No update for ${Math.round(minsAgo || 0)} mins`);
+                            $('#stat_status_icon').removeClass('status-active status-inactive').addClass('bg-light-danger text-danger');
+                            $('#live_status_badge').addClass('d-none').removeClass('d-flex');
+                        } else if (healthStatus === 'signal_delayed') {
+                            $('#diagnostic_alert_banner').removeClass('d-none').addClass('alert-warning d-flex');
+                            $('#diagnostic_alert_title').text('🟡 Tracking Signal Delayed').attr('class', 'text-warning d-block mb-1');
+                            $('#diagnostic_alert_text').text(diagMessage);
+                            
+                            $('#stat_status').html('<span class="text-warning"><i class="ti ti-clock-warning me-1"></i> Signal Delayed</span>');
+                            $('#stat_status_sub').text(`Weak GPS (${Math.round(minsAgo || 0)} mins ago)`);
+                            $('#stat_status_icon').removeClass('status-active status-inactive').addClass('bg-light-warning text-warning');
+                            $('#live_status_badge').addClass('d-none').removeClass('d-flex');
+                        } else if (healthStatus === 'live_stationary') {
+                            $('#stat_status').html('<span class="text-primary"><i class="ti ti-building-community me-1"></i> Live & Stationary</span>');
+                            $('#stat_status_sub').text('Stationary at location (Confirmed Active)');
+                            $('#stat_status_icon').removeClass('status-active status-inactive').addClass('bg-light-primary text-primary');
+                            $('#live_status_badge').removeClass('d-none').addClass('d-flex');
+                        } else if (healthStatus === 'live_moving') {
+                            $('#stat_status').html('<span class="text-success"><i class="ti ti-navigation me-1"></i> Live & Moving</span>');
+                            $('#stat_status_sub').text('Active on route');
                             $('#stat_status_icon').removeClass('status-inactive').addClass('status-active');
                             $('#live_status_badge').removeClass('d-none').addClass('d-flex');
                         } else if (hasClockOut) {
@@ -781,10 +818,22 @@
                                 }
 
                                 if (isLast) {
-                                    if (isClockedIn) {
+                                    if (healthStatus === 'signal_lost') {
+                                        markerClass = 'leaflet-div-icon-end';
+                                        markerSize = [16, 16];
+                                        labelTitle = `🔴 Tracking Signal Lost (Last Ping: ${pt.time})`;
+                                        timelineType = 'end';
+                                        badgeLetter = '!';
+                                    } else if (healthStatus === 'live_stationary') {
                                         markerClass = 'leaflet-div-icon-current';
                                         markerSize = [20, 20];
-                                        labelTitle = `🔵 Current Live Position (${employeeName})`;
+                                        labelTitle = `🔵 Live & Stationary (${employeeName})`;
+                                        timelineType = 'current';
+                                        badgeLetter = 'L';
+                                    } else if (isClockedIn) {
+                                        markerClass = 'leaflet-div-icon-current';
+                                        markerSize = [20, 20];
+                                        labelTitle = `🟢 Current Live Position (${employeeName})`;
                                         timelineType = 'current';
                                         badgeLetter = 'L';
                                     } else if (hasClockOut || pt.type === 'end') {

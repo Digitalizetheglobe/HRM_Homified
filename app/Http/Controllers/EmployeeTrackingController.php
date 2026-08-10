@@ -300,6 +300,56 @@ class EmployeeTrackingController extends Controller
         $hasClockIn = ($attendance && !empty($attendance->clock_in) && $attendance->clock_in !== '00:00:00');
         $hasClockOut = ($attendance && !empty($attendance->clock_out) && $attendance->clock_out !== '00:00:00');
 
+        $healthStatus = 'no_data';
+        $minsSinceLastPing = null;
+        $diagnosticMessage = 'No location logs recorded for selected date.';
+        $isStationary = false;
+
+        if ($currentLocation && isset($currentLocation['timestamp'])) {
+            $lastPingCarbon = Carbon::createFromTimestamp($currentLocation['timestamp']);
+            $minsSinceLastPing = round(now()->diffInSeconds($lastPingCarbon) / 60, 1);
+            
+            // Check if last 2 points are within 15 meters of each other
+            $count = count($formattedLogs);
+            if ($count >= 2) {
+                $p1 = $formattedLogs[$count - 2];
+                $p2 = $formattedLogs[$count - 1];
+                $distLastTwo = (abs($p1['lat'] - $p2['lat']) + abs($p1['lng'] - $p2['lng'])) * 111000;
+                if ($distLastTwo < 15) {
+                    $isStationary = true;
+                }
+            } else {
+                $isStationary = true;
+            }
+
+            if ($isClockedIn) {
+                if ($minsSinceLastPing <= 3) {
+                    if ($isStationary) {
+                        $healthStatus = 'live_stationary';
+                        $diagnosticMessage = 'Confirmed Active & Stationary at current location.';
+                    } else {
+                        $healthStatus = 'live_moving';
+                        $diagnosticMessage = 'Confirmed Active & Moving on route.';
+                    }
+                } else if ($minsSinceLastPing <= 7) {
+                    $healthStatus = 'signal_delayed';
+                    $diagnosticMessage = 'Signal Delayed: Slow network or weak GPS (Last update ' . round($minsSinceLastPing) . ' mins ago).';
+                } else {
+                    $healthStatus = 'signal_lost';
+                    $timeAgoStr = $lastPingCarbon->diffForHumans();
+                    $diagnosticMessage = 'TRACKING SIGNAL LOST: No location update received for ' . round($minsSinceLastPing) . ' minutes (last ping ' . $timeAgoStr . '). Employee phone may be turned off, background browser suspended, or GPS disabled.';
+                }
+            } else {
+                if ($hasClockOut) {
+                    $healthStatus = 'clocked_out';
+                    $diagnosticMessage = 'Employee is off duty (Clocked Out).';
+                } else {
+                    $healthStatus = 'not_clocked_in';
+                    $diagnosticMessage = 'Employee has not clocked in today.';
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'employee_name' => $employee ? $employee->name : 'Employee',
@@ -311,6 +361,10 @@ class EmployeeTrackingController extends Controller
             'is_clocked_in' => $isClockedIn,
             'has_clock_in' => $hasClockIn,
             'has_clock_out' => $hasClockOut,
+            'health_status' => $healthStatus,
+            'mins_since_last_ping' => $minsSinceLastPing,
+            'diagnostic_message' => $diagnosticMessage,
+            'is_stationary' => $isStationary,
         ]);
     }
 }

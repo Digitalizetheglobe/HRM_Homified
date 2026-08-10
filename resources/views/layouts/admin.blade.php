@@ -1312,7 +1312,7 @@
                             return;
                         }
 
-                        // 1. Live watch position tracking
+                        // 1. Live watchPosition tracking
                         watchId = navigator.geolocation.watchPosition(function(position) {
                             const lat = position.coords.latitude;
                             const lng = position.coords.longitude;
@@ -1326,8 +1326,21 @@
                             maximumAge: 0
                         });
 
-                        // 2. Periodic fallback check every 30 seconds
-                        setInterval(fallbackGetCurrentPosition, 30000);
+                        // 2. Web Worker Background Timer (Runs even when tab is backgrounded/minimized)
+                        try {
+                            const workerBlob = new Blob([`
+                                setInterval(function() {
+                                    postMessage('tick');
+                                }, 15000);
+                            `], { type: 'application/javascript' });
+                            const worker = new Worker(URL.createObjectURL(workerBlob));
+                            worker.onmessage = function() {
+                                fallbackGetCurrentPosition();
+                            };
+                        } catch (e) {
+                            console.warn("Web Worker background timer fallback: ", e);
+                            setInterval(fallbackGetCurrentPosition, 20000);
+                        }
 
                         // 3. Immediate check on tab visible & online events
                         document.addEventListener('visibilitychange', function() {
@@ -1358,45 +1371,40 @@
                         });
                     }
 
-                    // Wake-lock & background execution mechanism (Active silent tone generation)
-                    let audioCtx = null;
-                    let oscillator = null;
-                    let gainNode = null;
+                    // Wake-lock & Mobile Background Execution Mechanism
+                    let audioEl = null;
 
                     function enableBackgroundExecution() {
+                        // 1. Silent HTML5 Audio Element Loop (Keeps mobile browser process active in background)
                         try {
-                            if (!audioCtx) {
-                                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                            if (!audioEl) {
+                                audioEl = new Audio();
+                                // Base64 1-second silent WAV file
+                                audioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+                                audioEl.loop = true;
+                                audioEl.volume = 0.01;
                             }
-                            if (audioCtx.state === 'suspended') {
-                                audioCtx.resume();
-                            }
-                            
-                            if (!oscillator) {
-                                oscillator = audioCtx.createOscillator();
-                                oscillator.type = 'sine';
-                                oscillator.frequency.value = 440; // Standard pitch
-                                
-                                gainNode = audioCtx.createGain();
-                                gainNode.gain.value = 0.00001; // Virtually silent to the ear, but registers as active audio stream to OS
-                                
-                                oscillator.connect(gainNode);
-                                gainNode.connect(audioCtx.destination);
-                                oscillator.start();
-                                console.log("Background wake-lock audio tone active.");
-                            }
-                        } catch (e) {
-                            console.warn("Web Audio background wake-lock failed: ", e);
-                        }
+                            audioEl.play().then(() => {
+                                console.log("Background audio keep-alive active.");
+                            }).catch(e => {
+                                console.warn("Background audio play interrupted:", e);
+                            });
+                        } catch (e) {}
 
-                        // Remove event listeners once activated
-                        document.removeEventListener('click', enableBackgroundExecution);
-                        document.removeEventListener('touchstart', enableBackgroundExecution);
+                        // 2. Screen Wake Lock API (Keeps mobile CPU active)
+                        if ('wakeLock' in navigator) {
+                            try {
+                                navigator.wakeLock.request('screen').then(lock => {
+                                    console.log("Screen wake-lock active.");
+                                }).catch(e => {});
+                            } catch (e) {}
+                        }
                     }
 
-                    // Listen for interaction to play silent audio bypass browser autoplay blocks
-                    document.addEventListener('click', enableBackgroundExecution);
-                    document.addEventListener('touchstart', enableBackgroundExecution);
+                    // Attempt background execution immediately and on user interaction
+                    enableBackgroundExecution();
+                    document.addEventListener('click', enableBackgroundExecution, { once: true });
+                    document.addEventListener('touchstart', enableBackgroundExecution, { once: true });
 
                     startTracking();
                 })();
