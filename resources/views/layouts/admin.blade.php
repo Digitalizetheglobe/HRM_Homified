@@ -1242,6 +1242,8 @@
                     let lastLng = null;
                     let lastPingTime = 0;
                     let watchId = null;
+                    let audioEl = null;
+                    let wakeLockObj = null;
 
                     const isCapacitor = (typeof window.Capacitor !== 'undefined');
 
@@ -1261,7 +1263,7 @@
                         try {
                             let queue = JSON.parse(localStorage.getItem('offline_pings') || '[]');
                             queue.push({ lat: lat, lng: lng, time: Date.now() });
-                            if (queue.length > 100) queue.shift();
+                            if (queue.length > 200) queue.shift();
                             localStorage.setItem('offline_pings', JSON.stringify(queue));
                         } catch (e) {}
                     }
@@ -1303,10 +1305,10 @@
                                 shouldLog = true;
                                 reason = `Moved ${distance.toFixed(1)}m`;
                             } 
-                            // Or if 45 seconds (45,000 ms) have passed since the last ping (heartbeat)
-                            else if (timeElapsed >= 45000) {
+                            // Or if 30 seconds (30,000 ms) have passed since the last ping (heartbeat)
+                            else if (timeElapsed >= 30000) {
                                 shouldLog = true;
-                                reason = "Periodic heartbeat (45s elapsed)";
+                                reason = "Periodic heartbeat (30s elapsed)";
                             }
                         }
 
@@ -1339,77 +1341,52 @@
                         });
                     }
 
-                    function startTracking() {
-                        // If running inside Capacitor APK with native Geolocation plugin
-                        if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
-                            console.log("Capacitor Native Geolocation plugin detected.");
-                            try {
-                                window.Capacitor.Plugins.Geolocation.watchPosition({
-                                    enableHighAccuracy: true,
-                                    timeout: 15000,
-                                    maximumAge: 0
-                                }, function(position, err) {
-                                    if (position && position.coords) {
-                                        sendLocationData(position.coords.latitude, position.coords.longitude, "CapacitorNative");
-                                    }
-                                });
-                            } catch (e) {
-                                console.warn("Capacitor Native Geolocation watch failed, using standard web API:", e);
-                            }
-                        }
-
-                        if (!navigator.geolocation) {
-                            console.log("Geolocation is not supported by this browser.");
-                            return;
-                        }
-
-                        // 1. Live watchPosition tracking
-                        watchId = navigator.geolocation.watchPosition(function(position) {
-                            const lat = position.coords.latitude;
-                            const lng = position.coords.longitude;
-                            sendLocationData(lat, lng, "Watch");
-                        }, function(error) {
-                            console.warn("Geolocation watchPosition error: ", error.message);
-                            fallbackGetCurrentPosition();
-                        }, {
-                            enableHighAccuracy: true,
-                            timeout: 15000,
-                            maximumAge: 0
-                        });
-
-                        // 2. Web Worker Background Timer (Runs even when tab is backgrounded/minimized)
+                    // Persistent Background Execution via MediaSession & Silent Audio
+                    function enableBackgroundExecution() {
                         try {
-                            const workerBlob = new Blob([`
-                                setInterval(function() {
-                                    postMessage('tick');
-                                }, 15000);
-                            `], { type: 'application/javascript' });
-                            const worker = new Worker(URL.createObjectURL(workerBlob));
-                            worker.onmessage = function() {
-                                fallbackGetCurrentPosition();
-                            };
-                        } catch (e) {
-                            console.warn("Web Worker background timer fallback: ", e);
-                            setInterval(fallbackGetCurrentPosition, 20000);
-                        }
-
-                        // 3. Immediate check on tab visible & online events
-                        document.addEventListener('visibilitychange', function() {
-                            if (document.visibilityState === 'visible') {
-                                flushOfflineQueue();
-                                fallbackGetCurrentPosition();
+                            if (!audioEl) {
+                                audioEl = new Audio();
+                                // Continuous silent WAV audio track
+                                audioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+                                audioEl.loop = true;
+                                audioEl.volume = 0.01;
                             }
-                        });
-                        window.addEventListener('online', function() {
-                            flushOfflineQueue();
-                            fallbackGetCurrentPosition();
-                        });
-                        
-                        // Initial fetch
-                        fallbackGetCurrentPosition();
+                            if (audioEl.paused) {
+                                audioEl.play().catch(e => {});
+                            }
+
+                            // Register MediaSession API to prevent OS process termination when screen locks
+                            if ('mediaSession' in navigator) {
+                                navigator.mediaSession.metadata = new MediaMetadata({
+                                    title: 'HRM Active Location Tracking',
+                                    artist: 'Live Employee Attendance Service',
+                                    album: 'HRM System'
+                                });
+                                navigator.mediaSession.setActionHandler('play', function() {
+                                    if (audioEl) audioEl.play().catch(e => {});
+                                });
+                                navigator.mediaSession.setActionHandler('pause', function() {
+                                    if (audioEl) audioEl.play().catch(e => {});
+                                });
+                            }
+                        } catch (e) {}
+
+                        // Screen WakeLock request
+                        if ('wakeLock' in navigator) {
+                            try {
+                                navigator.wakeLock.request('screen').then(lock => {
+                                    wakeLockObj = lock;
+                                }).catch(e => {});
+                            } catch (e) {}
+                        }
                     }
 
                     function fallbackGetCurrentPosition() {
+                        // Re-trigger audio keep-alive if paused during lock
+                        if (audioEl && audioEl.paused) {
+                            audioEl.play().catch(e => {});
+                        }
+
                         if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
                             try {
                                 window.Capacitor.Plugins.Geolocation.getCurrentPosition({
@@ -1438,30 +1415,82 @@
                         });
                     }
 
-                    // Wake-lock & Mobile Background Execution Mechanism
-                    let audioEl = null;
-
-                    function enableBackgroundExecution() {
-                        try {
-                            if (!audioEl) {
-                                audioEl = new Audio();
-                                audioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-                                audioEl.loop = true;
-                                audioEl.volume = 0.01;
-                            }
-                            audioEl.play().catch(e => {});
-                        } catch (e) {}
-
-                        if ('wakeLock' in navigator) {
+                    function startTracking() {
+                        // 1. Capacitor Native Plugin Check
+                        if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+                            console.log("Capacitor Native Geolocation plugin detected.");
                             try {
-                                navigator.wakeLock.request('screen').catch(e => {});
-                            } catch (e) {}
+                                window.Capacitor.Plugins.Geolocation.watchPosition({
+                                    enableHighAccuracy: true,
+                                    timeout: 15000,
+                                    maximumAge: 0
+                                }, function(position, err) {
+                                    if (position && position.coords) {
+                                        sendLocationData(position.coords.latitude, position.coords.longitude, "CapacitorNative");
+                                    }
+                                });
+                            } catch (e) {
+                                console.warn("Capacitor Native Geolocation watch failed, using standard web API:", e);
+                            }
                         }
+
+                        if (!navigator.geolocation) {
+                            console.log("Geolocation is not supported by this browser.");
+                            return;
+                        }
+
+                        // 2. Live watchPosition tracking
+                        watchId = navigator.geolocation.watchPosition(function(position) {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            sendLocationData(lat, lng, "Watch");
+                        }, function(error) {
+                            console.warn("Geolocation watchPosition error: ", error.message);
+                            fallbackGetCurrentPosition();
+                        }, {
+                            enableHighAccuracy: true,
+                            timeout: 15000,
+                            maximumAge: 0
+                        });
+
+                        // 3. Web Worker Background Heartbeat (Runs in separate thread even when screen locked)
+                        try {
+                            const workerBlob = new Blob([`
+                                setInterval(function() {
+                                    postMessage('tick');
+                                }, 15000);
+                            `], { type: 'application/javascript' });
+                            const worker = new Worker(URL.createObjectURL(workerBlob));
+                            worker.onmessage = function() {
+                                fallbackGetCurrentPosition();
+                            };
+                        } catch (e) {
+                            console.warn("Web Worker background timer fallback: ", e);
+                            setInterval(fallbackGetCurrentPosition, 15000);
+                        }
+
+                        // 4. Page Visibility & Screen Lock Auto-Resume Event Listeners
+                        document.addEventListener('visibilitychange', function() {
+                            enableBackgroundExecution();
+                            if (document.visibilityState === 'visible') {
+                                flushOfflineQueue();
+                                fallbackGetCurrentPosition();
+                            }
+                        });
+                        window.addEventListener('online', function() {
+                            flushOfflineQueue();
+                            fallbackGetCurrentPosition();
+                        });
+
+                        // Initial fetch
+                        fallbackGetCurrentPosition();
                     }
 
+                    // Attach user interaction listeners to activate background audio service & wake lock
                     enableBackgroundExecution();
-                    document.addEventListener('click', enableBackgroundExecution, { once: true });
-                    document.addEventListener('touchstart', enableBackgroundExecution, { once: true });
+                    ['click', 'touchstart', 'pointerdown', 'scroll'].forEach(evtName => {
+                        document.addEventListener(evtName, enableBackgroundExecution, { passive: true });
+                    });
 
                     startTracking();
                 })();
