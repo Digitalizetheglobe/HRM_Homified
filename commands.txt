@@ -48,7 +48,7 @@ If composer files did NOT change, skip this step.
 
 6. Restart OpenLiteSpeed (Optional but safe)
 
-        
+    systemctl restart lsws
 
 ------------------------------------------------------------------------
 

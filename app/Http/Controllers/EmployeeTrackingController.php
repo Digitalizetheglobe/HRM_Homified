@@ -100,6 +100,45 @@ class EmployeeTrackingController extends Controller
             ], 200);
         }
 
+        // Server-side Deduplication & Jitter Throttling
+        $lastLog = EmployeeLocationLog::where('employee_id', $employee->id)
+            ->orderBy('pinged_at', 'desc')
+            ->first();
+
+        if ($lastLog) {
+            $secondsSinceLastLog = now()->diffInSeconds($lastLog->pinged_at);
+            
+            // Calculate distance between last logged position and new ping via Haversine formula
+            $lat1 = deg2rad($lastLog->latitude);
+            $lng1 = deg2rad($lastLog->longitude);
+            $lat2 = deg2rad($request->latitude);
+            $lng2 = deg2rad($request->longitude);
+
+            $dlat = $lat2 - $lat1;
+            $dlng = $lng2 - $lng1;
+            $a = sin($dlat / 2) * sin($dlat / 2) + cos($lat1) * cos($lat2) * sin($dlng / 2) * sin($dlng / 2);
+            $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+            $distanceMeters = 6371000 * $c;
+
+            // 1. Strict time throttle: Ignore any ping received within 20 seconds of last log
+            if ($secondsSinceLastLog < 20) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Ignored rapid ping (Logged recently).',
+                    'ignored' => true
+                ]);
+            }
+
+            // 2. Distance throttle: Ignore movement less than 25 meters unless 60 seconds have passed (stationary heartbeat)
+            if ($distanceMeters < 25 && $secondsSinceLastLog < 60) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Ignored minor GPS jitter (Stationary).',
+                    'ignored' => true
+                ]);
+            }
+        }
+
         // Log the coordinates
         $log = EmployeeLocationLog::create([
             'employee_id' => $employee->id,

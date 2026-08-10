@@ -1275,17 +1275,11 @@
                             if (!queue || !queue.length) return;
                             localStorage.removeItem('offline_pings');
 
-                            queue.forEach(item => {
-                                $.ajax({
-                                    url: "{{ route('employee.ping-location') }}",
-                                    type: "POST",
-                                    data: {
-                                        latitude: item.lat,
-                                        longitude: item.lng,
-                                        _token: "{{ csrf_token() }}"
-                                    }
-                                });
-                            });
+                            // Send only the most recent queued location point to avoid flooding 30 duplicate requests
+                            const latestItem = queue[queue.length - 1];
+                            if (latestItem && latestItem.lat && latestItem.lng) {
+                                sendLocationData(latestItem.lat, latestItem.lng, 30, "OfflineSync");
+                            }
                         } catch (e) {}
                     }
 
