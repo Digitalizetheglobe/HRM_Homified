@@ -1241,6 +1241,7 @@
                     let lastLat = null;
                     let lastLng = null;
                     let lastPingTime = 0;
+                    let lastAccuracy = null;
                     let watchId = null;
                     let audioEl = null;
                     let wakeLockObj = null;
@@ -1288,10 +1289,17 @@
                         } catch (e) {}
                     }
 
-                    function sendLocationData(lat, lng, source) {
+                    function sendLocationData(lat, lng, accuracy, source) {
                         const now = Date.now();
                         let shouldLog = false;
                         let reason = "";
+
+                        // Reject extreme low-accuracy readings (e.g. > 100 meters noise) unless initial
+                        const acc = (accuracy !== null && accuracy !== undefined) ? accuracy : 30;
+                        if (acc > 120 && lastLat !== null) {
+                            console.log(`[${source}] Ignored inaccurate location ping (Accuracy: ${acc.toFixed(1)}m too weak)`);
+                            return;
+                        }
 
                         if (lastLat === null || lastLng === null) {
                             shouldLog = true;
@@ -1300,15 +1308,26 @@
                             const distance = getDistance(lastLat, lastLng, lat, lng);
                             const timeElapsed = now - lastPingTime;
 
-                            // Log if user moved >= 10 meters and at least 10 seconds elapsed (throttling)
-                            if (distance >= 10 && timeElapsed >= 10000) {
+                            // Dynamic Noise Filter Threshold:
+                            // If accuracy radius is large (e.g., 40m), real movement must exceed accuracy noise margin
+                            const minRequiredDistance = Math.max(35, acc * 0.75);
+
+                            // Log real movement if distance >= minRequiredDistance and at least 30 seconds passed
+                            if (distance >= minRequiredDistance && timeElapsed >= 30000) {
                                 shouldLog = true;
-                                reason = `Moved ${distance.toFixed(1)}m`;
+                                reason = `Real Movement: ${distance.toFixed(1)}m (Acc: ${acc.toFixed(0)}m)`;
                             } 
-                            // Or if 30 seconds (30,000 ms) have passed since the last ping (heartbeat)
-                            else if (timeElapsed >= 30000) {
+                            // Periodic heartbeat every 60 seconds if stationary
+                            else if (timeElapsed >= 60000) {
+                                // If position drift is within noise radius, reuse last known good coordinates to avoid map zig-zags
+                                if (distance < minRequiredDistance) {
+                                    lat = lastLat;
+                                    lng = lastLng;
+                                    reason = "Stationary Heartbeat (60s)";
+                                } else {
+                                    reason = "Periodic Heartbeat (60s)";
+                                }
                                 shouldLog = true;
-                                reason = "Periodic heartbeat (30s elapsed)";
                             }
                         }
 
@@ -1319,6 +1338,7 @@
                         lastLat = lat;
                         lastLng = lng;
                         lastPingTime = now;
+                        lastAccuracy = acc;
 
                         // Try flushing any queued offline points first
                         flushOfflineQueue();
@@ -1395,7 +1415,7 @@
                                     maximumAge: 0
                                 }).then(position => {
                                     if (position && position.coords) {
-                                        sendLocationData(position.coords.latitude, position.coords.longitude, "CapacitorFallback");
+                                        sendLocationData(position.coords.latitude, position.coords.longitude, position.coords.accuracy, "CapacitorFallback");
                                     }
                                 }).catch(e => {});
                             } catch(e) {}
@@ -1405,7 +1425,8 @@
                         navigator.geolocation.getCurrentPosition(position => {
                             const lat = position.coords.latitude;
                             const lng = position.coords.longitude;
-                            sendLocationData(lat, lng, "Fallback");
+                            const acc = position.coords.accuracy;
+                            sendLocationData(lat, lng, acc, "Fallback");
                         }, error => {
                             console.warn("Geolocation fallback getCurrentPosition error: ", error.message);
                         }, {
@@ -1426,7 +1447,7 @@
                                     maximumAge: 0
                                 }, function(position, err) {
                                     if (position && position.coords) {
-                                        sendLocationData(position.coords.latitude, position.coords.longitude, "CapacitorNative");
+                                        sendLocationData(position.coords.latitude, position.coords.longitude, position.coords.accuracy, "CapacitorNative");
                                     }
                                 });
                             } catch (e) {
@@ -1443,7 +1464,8 @@
                         watchId = navigator.geolocation.watchPosition(function(position) {
                             const lat = position.coords.latitude;
                             const lng = position.coords.longitude;
-                            sendLocationData(lat, lng, "Watch");
+                            const acc = position.coords.accuracy;
+                            sendLocationData(lat, lng, acc, "Watch");
                         }, function(error) {
                             console.warn("Geolocation watchPosition error: ", error.message);
                             fallbackGetCurrentPosition();
