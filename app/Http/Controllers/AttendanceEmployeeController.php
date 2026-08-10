@@ -1298,6 +1298,20 @@ namespace App\Http\Controllers;
 
                 $attendance->save();
 
+                // Automatically log initial location in tracking log
+                if ($latitude && $longitude) {
+                    try {
+                        \App\Models\EmployeeLocationLog::create([
+                            'employee_id' => $employeeId,
+                            'latitude'    => $latitude,
+                            'longitude'   => $longitude,
+                            'pinged_at'   => now(),
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Log::warning('Failed to auto-create location log on punch-in: ' . $e->getMessage());
+                    }
+                }
+
                 // Check for Comp-Off earning immediately on Punch In if it's a Week-Off day
                 $dayName = \Carbon\Carbon::parse($date)->format('l');
                 $employeeRecord = Auth::user()->employee;
@@ -1396,6 +1410,20 @@ namespace App\Http\Controllers;
                 }
 
                 $attendance->save();
+
+                // Automatically log punch-out location in tracking log
+                if ($latitude && $longitude) {
+                    try {
+                        \App\Models\EmployeeLocationLog::create([
+                            'employee_id' => $attendance->employee_id,
+                            'latitude'    => $latitude,
+                            'longitude'   => $longitude,
+                            'pinged_at'   => now(),
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Log::warning('Failed to auto-create location log on punch-out: ' . $e->getMessage());
+                    }
+                }
 
                 // Check for Comp-Off earning on Week-Off day
                 $dayName = \Carbon\Carbon::parse($date)->format('l');

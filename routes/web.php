@@ -1368,6 +1368,7 @@ Route::group(['middleware' => ['verified']], function () {
     // Employee Location Tracking Routes
     Route::get('employee-tracking', [\App\Http\Controllers\EmployeeTrackingController::class, 'index'])->name('employee.tracking')->middleware(['auth', 'XSS']);
     Route::post('employee-tracking/ping', [\App\Http\Controllers\EmployeeTrackingController::class, 'pingLocation'])->name('employee.ping-location')->middleware(['auth', 'XSS']);
+    Route::post('employee-tracking/simulate-ping', [\App\Http\Controllers\EmployeeTrackingController::class, 'simulatePing'])->name('employee.simulate-ping')->middleware(['auth', 'XSS']);
     Route::get('employee-tracking/data', [\App\Http\Controllers\EmployeeTrackingController::class, 'getTrackingData'])->name('employee.tracking-data')->middleware(['auth', 'XSS']);
 
     // Attendance Regularisation Routes

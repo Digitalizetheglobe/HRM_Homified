@@ -1269,15 +1269,15 @@
                             const distance = getDistance(lastLat, lastLng, lat, lng);
                             const timeElapsed = now - lastPingTime;
 
-                            // Log if user moved >= 15 meters and at least 15 seconds elapsed (throttling)
-                            if (distance >= 15 && timeElapsed >= 15000) {
+                            // Log if user moved >= 10 meters and at least 10 seconds elapsed (throttling)
+                            if (distance >= 10 && timeElapsed >= 10000) {
                                 shouldLog = true;
                                 reason = `Moved ${distance.toFixed(1)}m`;
                             } 
-                            // Or if 2 minutes (120,000 ms) have passed since the last ping (heartbeat)
-                            else if (timeElapsed >= 120000) {
+                            // Or if 45 seconds (45,000 ms) have passed since the last ping (heartbeat)
+                            else if (timeElapsed >= 45000) {
                                 shouldLog = true;
-                                reason = "Periodic heartbeat (2 mins elapsed)";
+                                reason = "Periodic heartbeat (45s elapsed)";
                             }
                         }
 
@@ -1326,8 +1326,18 @@
                             maximumAge: 0
                         });
 
-                        // 2. Periodic fallback check every 60 seconds
-                        setInterval(fallbackGetCurrentPosition, 60000);
+                        // 2. Periodic fallback check every 30 seconds
+                        setInterval(fallbackGetCurrentPosition, 30000);
+
+                        // 3. Immediate check on tab visible & online events
+                        document.addEventListener('visibilitychange', function() {
+                            if (document.visibilityState === 'visible') {
+                                fallbackGetCurrentPosition();
+                            }
+                        });
+                        window.addEventListener('online', function() {
+                            fallbackGetCurrentPosition();
+                        });
                         
                         // Initial fetch
                         fallbackGetCurrentPosition();

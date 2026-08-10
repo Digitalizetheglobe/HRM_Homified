@@ -61507,3 +61507,31 @@
 #53 C:\\xampp\\htdocs\\HRM_Homified\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\resources\\server.php(16): require_once('C:\\\\xampp\\\\htdocs...')
 #54 {main}
 "} 
+[2026-08-10 12:16:36] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-10"} 
+[2026-08-10 12:16:39] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-06"} 
+[2026-08-10 12:16:43] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-05"} 
+[2026-08-10 12:16:47] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:17:03] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:17:33] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:18:03] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:18:33] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:19:03] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:20:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:21:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:22:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:23:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:23:24] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:23:33] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:24:03] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:25:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:25:22] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:25:33] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:26:03] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:26:50] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:28:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:29:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:30:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:31:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:32:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:33:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
+[2026-08-10 12:34:01] local.INFO: Tracking Data Request parameters: {"employee_id":"1","date":"2026-08-04"} 
