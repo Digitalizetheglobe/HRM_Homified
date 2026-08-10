@@ -18,5 +18,6 @@ class VerifyCsrfToken extends Middleware
         'iyzipay/callback/*',
         'paytab-success/*',
         '/aamarpay*',
+        'employee-tracking/ping',
     ];
 }

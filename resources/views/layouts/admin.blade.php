@@ -1242,8 +1242,8 @@
                     let lastLng = null;
                     let lastPingTime = 0;
                     let watchId = null;
-                    let audioCtx = null;
-                    let silentAudio = null;
+
+                    const isCapacitor = (typeof window.Capacitor !== 'undefined');
 
                     // Haversine formula to calculate distance in meters
                     function getDistance(lat1, lon1, lat2, lon2) {
@@ -1255,6 +1255,35 @@
                                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
                         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                         return R * c;
+                    }
+
+                    function queueOfflinePing(lat, lng) {
+                        try {
+                            let queue = JSON.parse(localStorage.getItem('offline_pings') || '[]');
+                            queue.push({ lat: lat, lng: lng, time: Date.now() });
+                            if (queue.length > 100) queue.shift();
+                            localStorage.setItem('offline_pings', JSON.stringify(queue));
+                        } catch (e) {}
+                    }
+
+                    function flushOfflineQueue() {
+                        try {
+                            let queue = JSON.parse(localStorage.getItem('offline_pings') || '[]');
+                            if (!queue || !queue.length) return;
+                            localStorage.removeItem('offline_pings');
+
+                            queue.forEach(item => {
+                                $.ajax({
+                                    url: "{{ route('employee.ping-location') }}",
+                                    type: "POST",
+                                    data: {
+                                        latitude: item.lat,
+                                        longitude: item.lng,
+                                        _token: "{{ csrf_token() }}"
+                                    }
+                                });
+                            });
+                        } catch (e) {}
                     }
 
                     function sendLocationData(lat, lng, source) {
@@ -1289,6 +1318,9 @@
                         lastLng = lng;
                         lastPingTime = now;
 
+                        // Try flushing any queued offline points first
+                        flushOfflineQueue();
+
                         $.ajax({
                             url: "{{ route('employee.ping-location') }}",
                             type: "POST",
@@ -1301,12 +1333,31 @@
                                 console.log(`[${source}] Location tracked: `, response.message, `Reason: ${reason} (${lat}, ${lng})`);
                             },
                             error: function(xhr) {
-                                console.error("Location tracking error", xhr);
+                                console.warn("Location ping network issue. Saving to offline queue...", xhr);
+                                queueOfflinePing(lat, lng);
                             }
                         });
                     }
 
                     function startTracking() {
+                        // If running inside Capacitor APK with native Geolocation plugin
+                        if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+                            console.log("Capacitor Native Geolocation plugin detected.");
+                            try {
+                                window.Capacitor.Plugins.Geolocation.watchPosition({
+                                    enableHighAccuracy: true,
+                                    timeout: 15000,
+                                    maximumAge: 0
+                                }, function(position, err) {
+                                    if (position && position.coords) {
+                                        sendLocationData(position.coords.latitude, position.coords.longitude, "CapacitorNative");
+                                    }
+                                });
+                            } catch (e) {
+                                console.warn("Capacitor Native Geolocation watch failed, using standard web API:", e);
+                            }
+                        }
+
                         if (!navigator.geolocation) {
                             console.log("Geolocation is not supported by this browser.");
                             return;
@@ -1345,10 +1396,12 @@
                         // 3. Immediate check on tab visible & online events
                         document.addEventListener('visibilitychange', function() {
                             if (document.visibilityState === 'visible') {
+                                flushOfflineQueue();
                                 fallbackGetCurrentPosition();
                             }
                         });
                         window.addEventListener('online', function() {
+                            flushOfflineQueue();
                             fallbackGetCurrentPosition();
                         });
                         
@@ -1357,6 +1410,20 @@
                     }
 
                     function fallbackGetCurrentPosition() {
+                        if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+                            try {
+                                window.Capacitor.Plugins.Geolocation.getCurrentPosition({
+                                    enableHighAccuracy: true,
+                                    timeout: 10000,
+                                    maximumAge: 0
+                                }).then(position => {
+                                    if (position && position.coords) {
+                                        sendLocationData(position.coords.latitude, position.coords.longitude, "CapacitorFallback");
+                                    }
+                                }).catch(e => {});
+                            } catch(e) {}
+                        }
+
                         if (!navigator.geolocation) return;
                         navigator.geolocation.getCurrentPosition(position => {
                             const lat = position.coords.latitude;
@@ -1375,33 +1442,23 @@
                     let audioEl = null;
 
                     function enableBackgroundExecution() {
-                        // 1. Silent HTML5 Audio Element Loop (Keeps mobile browser process active in background)
                         try {
                             if (!audioEl) {
                                 audioEl = new Audio();
-                                // Base64 1-second silent WAV file
                                 audioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
                                 audioEl.loop = true;
                                 audioEl.volume = 0.01;
                             }
-                            audioEl.play().then(() => {
-                                console.log("Background audio keep-alive active.");
-                            }).catch(e => {
-                                console.warn("Background audio play interrupted:", e);
-                            });
+                            audioEl.play().catch(e => {});
                         } catch (e) {}
 
-                        // 2. Screen Wake Lock API (Keeps mobile CPU active)
                         if ('wakeLock' in navigator) {
                             try {
-                                navigator.wakeLock.request('screen').then(lock => {
-                                    console.log("Screen wake-lock active.");
-                                }).catch(e => {});
+                                navigator.wakeLock.request('screen').catch(e => {});
                             } catch (e) {}
                         }
                     }
 
-                    // Attempt background execution immediately and on user interaction
                     enableBackgroundExecution();
                     document.addEventListener('click', enableBackgroundExecution, { once: true });
                     document.addEventListener('touchstart', enableBackgroundExecution, { once: true });
