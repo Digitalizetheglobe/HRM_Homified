@@ -14,7 +14,7 @@ class AccountList extends Model
         'branch_code',
         'bank_branch',
         'created_by',
-    ];
+    ];//done
 
     public static function add_Balance($id, $amount)
     {
