@@ -2717,6 +2717,9 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function isEmployeeInHR()
     {
+        if (in_array(strtolower($this->type), ['company', 'hr', 'super admin', 'admin', 'director'])) {
+            return true;
+        }
         if ($this->type === 'employee') {
             $employee = \App\Models\Employee::where('user_id', $this->id)->first();
             if ($employee && $employee->department_id) {
@@ -2726,9 +2729,6 @@ class User extends Authenticatable implements MustVerifyEmail
                     return in_array($deptName, ['human resource', 'hr', 'human resources', 'hr department', 'human resource department']) || (strpos($deptName, 'human resource') !== false);
                 }
             }
-        }
-        if ($this->type === 'hr') {
-            return true;
         }
         return false;
     }

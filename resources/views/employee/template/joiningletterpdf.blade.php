@@ -1,9 +1,60 @@
-@extends('layouts.contractheader')
-@section('page-title')
-    {{ __('Appointment Letter') }}
-@endsection
-
-@section('content')
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ __('Appointment Letter') }}</title>
+    <style>
+        @page {
+            margin: 0;
+            size: A4 portrait;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            color: #000000;
+        }
+        .letterhead-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .page-container {
+            padding: 200px 40px 80px 40px;
+            box-sizing: border-box;
+        }
+        .header-date-address {
+            text-align: right;
+            font-size: 15px;
+            line-height: 1.4;
+            margin-bottom: 40px;
+        }
+        .title-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .title-section h2 {
+            font-weight: bold;
+            color: #000000;
+            margin: 0;
+            font-size: 26px;
+        }
+        .content-section {
+            font-size: 15px;
+            line-height: 1.8;
+            text-align: justify;
+        }
+        .content-section p {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
 @php
     // Extract first name
     $firstName = explode(' ', trim($employees->name))[0];
@@ -16,7 +67,7 @@
     
     $joiningDate = !empty($employees->company_doj) ? date('jS F Y', strtotime($employees->company_doj)) : date('jS F Y');
 
-    // Base64 encode the letterhead image to ensure it renders correctly in PDF without CORS or space character issues
+    // Base64 encode the letterhead image to ensure it renders correctly in PDF without CORS or path issues
     $letterheadPath = public_path('uploads/logo/appointment -letter.png');
     $letterheadBase64 = '';
     if (file_exists($letterheadPath)) {
@@ -26,67 +77,40 @@
     }
 @endphp
 
-<div style="padding: 10px; background-color: #f4f4f4; text-align: center;">
-    <div id="boxes" style="width: 800px; height: 1120px; box-sizing: border-box; margin: 0 auto; background-color: #ffffff; background-image: url('{{ $letterheadBase64 }}'); background-size: 100% 100%; background-repeat: no-repeat; padding: 200px 40px 80px 40px; text-align: left;">
+@if(!empty($letterheadBase64))
+    <img src="{{ $letterheadBase64 }}" class="letterhead-bg" />
+@endif
 
-        {{-- Date and Address --}}
-        <div style="text-align: right; font-family: Arial, sans-serif; font-size: 15px; color: #000; line-height: 1.4; margin-bottom: 40px;">
-            <p style="margin: 0 0 15px 0;"><strong>Date:</strong> {{ $joiningDate }}</p>
-            <p style="margin: 0; text-align: right; display: inline-block; max-width: 300px;">
-                <strong>Address :</strong> 301, SV9 Corner,<br>
-                choudhary Park,<br>
-                 Wakad - 411057
-            </p>
-        </div>
+<div class="page-container">
+    {{-- Date and Address --}}
+    <div class="header-date-address">
+        <p style="margin: 0 0 15px 0;"><strong>Date:</strong> {{ $joiningDate }}</p>
+        <p style="margin: 0;">
+            <strong>Address :</strong> 301, SV9 Corner,<br>
+            choudhary Park,<br>
+            Wakad - 411057
+        </p>
+    </div>
 
-        {{-- Title --}}
-        <div style="text-align: center; margin-bottom: 40px;">
-            <h2 style="font-family: Arial, sans-serif; font-weight: bold; color: #000; margin: 0; font-size: 26px;">Appointment Letter</h2>
-        </div>
+    {{-- Title --}}
+    <div class="title-section">
+        <h2>Appointment Letter</h2>
+    </div>
 
-        {{-- Content --}}
-        <div style="font-family: Arial, sans-serif; font-size: 15px; color: #000; line-height: 1.8;">
-            <p style="margin-bottom: 30px;">Dear {{ $genderPrefix }} {{ $firstName }},</p>
+    {{-- Content --}}
+    <div class="content-section">
+        <p style="margin-bottom: 30px;">Dear {{ $genderPrefix }} {{ $firstName }},</p>
 
-            <p style="margin-bottom: 20px; text-align: justify;">We are pleased to appoint you the position of <strong>{{ !empty($employees->designation->name) ? $employees->designation->name : '' }}</strong> at <strong>Homified Consultants Private Limited</strong>.</p>
-            
-            <p style="margin-bottom: 35px; text-align: justify;">Your Skills and Experience make you a valuable addition to our team, and we look forward to Your Contributions starting on <strong>{{ $joiningDate }}</strong>.</p>
+        <p style="margin-bottom: 20px;">We are pleased to appoint you the position of <strong>{{ !empty($employees->designation->name) ? $employees->designation->name : '' }}</strong> at <strong>Homified Consultants Private Limited</strong>.</p>
+        
+        <p style="margin-bottom: 35px;">Your Skills and Experience make you a valuable addition to our team, and we look forward to Your Contributions starting on <strong>{{ $joiningDate }}</strong>.</p>
 
-            <p style="margin-bottom: 50px;">You will receive a per Month Salary of <strong>{{ !empty($employees->salary) ? number_format($employees->salary) : '' }}</strong>.</p>
+        <p style="margin-bottom: 50px;">You will receive a per Month Salary of <strong>{{ !empty($employees->salary) ? number_format($employees->salary) : '' }}</strong>.</p>
 
-            <p style="margin-bottom: 45px;">Sincerely,</p>
+        <p style="margin-bottom: 45px;">Sincerely,</p>
 
-            <p style="margin-bottom: 0;"><strong>Mr. Karamdeep Singh Sethi (Chairman)</strong></p>
-        </div>
-
+        <p style="margin-bottom: 0;"><strong>Mr. Karamdeep Singh Sethi (Chairman)</strong></p>
     </div>
 </div>
-@endsection
-
-@push('script-page')
-<script type="text/javascript" src="{{ asset('js/html2pdf.bundle.min.js') }}"></script>
-<script>
-    function closeScript() {
-        if (window.opener && window.opener !== window) {
-            setTimeout(function () {
-                window.close();
-            }, 1000);
-        }
-    }
-
-    $(window).on('load', function () {
-        setTimeout(function() {
-            var element = document.getElementById('boxes');
-            var opt = {
-                margin: 0,
-                filename: '{{$employees->name}}-AppointmentLetter.pdf',
-                image: {type: 'jpeg', quality: 1},
-                html2canvas: {scale: 2, useCORS: true},
-                jsPDF: {unit: 'in', format: 'A4', orientation: 'portrait'}
-            };
-
-            html2pdf().set(opt).from(element).save().then(closeScript);
-        }, 500);
-    });
-</script>
-@endpush
+</body>
+</html>

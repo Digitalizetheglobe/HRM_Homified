@@ -165,7 +165,12 @@
     </div>
 
     <div class="ms-auto" style="display: flex; justify-content: flex-end; align-items: center;">
-        <ul class="list-unstyled" style="display: flex; align-items: center;">
+        <ul class="list-unstyled mb-0" style="display: flex; align-items: center;">
+            <li class="dash-h-item me-2">
+                <a href="javascript:void(0)" onclick="if(window.refreshPageData){ window.refreshPageData(this); } else { var cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname; window.location.href = cleanUrl + '?refresh=' + new Date().getTime(); }" class="dash-head-link d-flex align-items-center justify-content-center" title="{{ __('Refresh Page Data') }}" style="background-color: white; border-radius: 50%; width: 40px; height: 40px; box-shadow: 0 2px 5px rgba(0,0,0,0.12); text-decoration: none;">
+                    <i class="ti ti-refresh text-primary" style="font-size: 20px;"></i>
+                </a>
+            </li>
             @if (\Auth::user()->type == 'company' || in_array(strtolower(\Auth::user()->type), ['hr', 'director']))
                 <li class="dropdown dash-h-item drp-notification">
                     <a class="dash-head-link dropdown-toggle arrow-none me-0 position-relative" 

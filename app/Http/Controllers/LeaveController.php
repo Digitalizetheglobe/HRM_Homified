@@ -777,6 +777,34 @@ class LeaveController extends Controller
         $leave = LocalLeave::find($request->leave_id);
         $previousStatus = $leave->status; // Get current status before updating
         $newStatus = $request->status;
+
+        // Process selected dates for partial or full approval
+        $selectedDates = $request->input('selected_dates', []);
+        if ($newStatus == 'Approved' && is_array($selectedDates) && count($selectedDates) > 0) {
+            sort($selectedDates);
+            $approvedCount = count($selectedDates);
+            $minDate = min($selectedDates);
+            $maxDate = max($selectedDates);
+
+            $leave->start_date = $minDate;
+            $leave->end_date = $maxDate;
+            $leave->total_leave_days = (string)$approvedCount;
+            $leave->approved_dates = json_encode($selectedDates);
+
+            $formattedDatesStr = implode(', ', array_map(function($d) {
+                return date('d M Y', strtotime($d));
+            }, $selectedDates));
+
+            $dateNote = "Approved Dates: " . $formattedDatesStr . " (" . $approvedCount . " day(s))";
+            if (!empty($leave->remark)) {
+                if (strpos($leave->remark, 'Approved Dates:') === false) {
+                    $leave->remark = $leave->remark . ' | ' . $dateNote;
+                }
+            } else {
+                $leave->remark = $dateNote;
+            }
+        }
+
         $total_leave_days = $leave->total_leave_days;
         
         // Check if this is a Comp-Off leave or Leave Without Pay

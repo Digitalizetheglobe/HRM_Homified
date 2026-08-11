@@ -36,6 +36,7 @@
     use Illuminate\Support\Facades\DB;
     use Illuminate\Validation\Rule;
     use App\Models\DailyQuote;  
+    use Barryvdh\DomPDF\Facade\Pdf;
 
     //use Faker\Provider\File;
 
@@ -973,7 +974,9 @@
             ];
 
             $joiningletter->content = JoiningLetter::replaceVariable($joiningletter->content, $obj);
-            return view('employee.template.joiningletterpdf', compact('joiningletter', 'employees'));
+            $pdf = Pdf::loadView('employee.template.joiningletterpdf', compact('joiningletter', 'employees'))
+                ->setPaper('a4', 'portrait');
+            return $pdf->download($employees->name . '-AppointmentLetter.pdf');
         }
         public function joiningletterDoc($id)
         {
@@ -1097,7 +1100,9 @@
             }
 
             $experience_certificate->content = ExperienceCertificate::replaceVariable($experience_certificate->content, $obj);
-            return view('employee.template.ExpCertificatepdf', compact('experience_certificate', 'employees'));
+            $pdf = Pdf::loadView('employee.template.ExpCertificatepdf', compact('experience_certificate', 'employees'))
+                ->setPaper('a4', 'portrait');
+            return $pdf->download($employees->name . '-ExperienceCertificate.pdf');
         }
 
         public function ExpCertificateDoc($id)
@@ -1182,7 +1187,9 @@
             ];
 
             $noc_certificate->content = NOC::replaceVariable($noc_certificate->content, $obj);
-            return view('employee.template.Nocpdf', compact('noc_certificate', 'employees'));
+            $pdf = Pdf::loadView('employee.template.Nocpdf', compact('noc_certificate', 'employees'))
+                ->setPaper('a4', 'portrait');
+            return $pdf->download($employees->name . '-NOC.pdf');
         }
         public function NocDoc($id)
         {

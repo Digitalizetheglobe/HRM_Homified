@@ -29,6 +29,7 @@ class Leave extends Model
         'forwarded_at',
         'company_approved',
         'director_approved',
+        'approved_dates',
     ];
 
     public function leaveType()

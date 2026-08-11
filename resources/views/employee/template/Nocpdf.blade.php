@@ -1,59 +1,29 @@
-
-@extends('layouts.contractheader')
-@section('page-title')
-    {{ __('NOC') }}
-@endsection
-
-@section('content')
-<div class="row" >
-
-    <div class="col-lg-10">
-        <div class="container">
-            <div>
-                <div class="card mt-5" id="printTable" style="margin-left: 180px;margin-right: -57px;">
-                
-                    <div class="card-body" id="boxes">
-                            <div class="row invoice-title mt-2">
-                                
-                                
-                                <p data-v-f2a183a6="">
-                                    <div>{!!$noc_certificate->content!!}</div>
-                                   
-                                </p>
-                        
-
-                        </div>
-                 </div>
-            </div>
-        </div>
-    </div>
-
-    
-</div>
-
-@endsection
-@push('script-page')
-    <script type="text/javascript" src="{{ asset('js/html2pdf.bundle.min.js') }}"></script>
-    <script>
-        function closeScript() {
-            setTimeout(function () {
-                window.open(window.location, '_self').close();
-            }, 1000);
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ __('NOC') }}</title>
+    <style>
+        @page {
+            margin: 20mm;
+            size: A4 portrait;
         }
-
-        $(window).on('load', function () {
-            var element = document.getElementById('boxes');
-            var opt = {
-                filename: '{{$employees->name}}',
-                image: {type: 'jpeg', quality: 1},
-                html2canvas: {scale: 4, dpi: 72, letterRendering: true},
-                jsPDF: {unit: 'in', format: 'A4'}
-            };
-
-            html2pdf().set(opt).from(element).save().then(closeScript);
-        });
-
-        
-    </script>
-    
-@endpush
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #000000;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .content-box {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="content-box">
+        {!! $noc_certificate->content !!}
+    </div>
+</body>
+</html>

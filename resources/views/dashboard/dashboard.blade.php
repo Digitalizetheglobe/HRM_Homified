@@ -72,14 +72,19 @@
 
                                 <div class="col-md-6">
                                     <div class="card" style="">
-                                        <div class="card-header">
-                                            <h5 style="font-size:20px;color:black">
-                                                {{ __('Attendance') }} 
-                                                <span class="badge bg-success" style="font-size: 10px; padding: 2px 5px; vertical-align: middle;">v2.0 Fast</span>
-                                            </h5>
-                                            <p id="currentDateTime"></p>
+                                        <div class="card-header d-flex justify-content-between align-items-center" style="padding: 12px 15px;">
+                                            <div>
+                                                <h5 style="font-size:20px;color:black" class="mb-0">
+                                                    {{ __('Attendance') }} 
+                                                    <span class="badge bg-success" style="font-size: 10px; padding: 2px 5px; vertical-align: middle;">v2.0 Fast</span>
+                                                </h5>
+                                                <p id="currentDateTime" class="mb-0" style="font-size: 12px; color: #6c757d;"></p>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm" onclick="refreshPageData(this)" title="{{ __('Refresh Attendance Status') }}" style="border-radius: 6px; font-weight: 600; padding: 6px 12px;">
+                                                <i class="fas fa-sync-alt me-1"></i> {{ __('Refresh') }}
+                                            </button>
                                         </div>
-                                        <div class="card-body text-center p-1">
+                                        <div class="card-body text-center p-3">
                                             
 
                                             <p id="attendanceStatus" class="font-bold">
@@ -102,6 +107,11 @@
                                                 @endif
                                             {{ Form::close() }}
 
+                                            <div class="mt-2">
+                                                <a href="javascript:void(0)" onclick="refreshPageData(this)" class="text-muted text-decoration-none" style="font-size: 12px;">
+                                                    <i class="fas fa-redo-alt me-1"></i> {{ __('Tap here if status is not updated') }}
+                                                </a>
+                                            </div>
 
                                             <div id="gpsMessage" class="alert d-none mt-2" role="alert"></div>
 
@@ -688,11 +698,21 @@
             }
         }
 
+        window.refreshPageData = function(btn) {
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Refreshing...';
+            }
+            var cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.location.href = cleanUrl + '?refresh=' + new Date().getTime();
+        };
+
         function safeReload() {
             setTimeout(() => {
                 // Add a visual hint that it's reloading
                 showMessage('info', '🔄 Reloading page... Please wait.');
-                window.location.assign(window.location.href);
+                var cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.location.href = cleanUrl + '?refresh=' + new Date().getTime();
                 
                 // Absolute backup - force reload after another 3 seconds if still here
                 setTimeout(() => {
