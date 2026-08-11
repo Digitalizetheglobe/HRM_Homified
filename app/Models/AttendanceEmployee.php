@@ -48,6 +48,7 @@ class AttendanceEmployee extends Model
         'clock_out_2_location',
         'clock_out_2_accuracy',
         'clock_out_2_location_captured_at',
+        'missed_punchout_notified_at',
     ];
 
     public function employees()

@@ -104,8 +104,28 @@
         $unseenPendingEmployeeCount = $pendingEmployees->count();
     }
 
+    // Get missed punch notifications (for all users including employees)
+    $missedPunchNotifications = collect([]);
+    $unseenMissedPunchCount = 0;
+    try {
+        if (\Schema::hasTable('notifications') && Auth::check()) {
+            $missedPunchNotifications = Auth::user()->unreadNotifications()
+                ->where(function($query) {
+                    $query->where('type', 'App\Notifications\MissedPunchOutNotification')
+                          ->orWhere('type', 'LIKE', '%MissedPunchOut%');
+                })
+                ->orderBy('created_at', 'desc')
+                ->take(10)
+                ->get();
+            $unseenMissedPunchCount = $missedPunchNotifications->count();
+        }
+    } catch (\Exception $e) {
+        $missedPunchNotifications = collect([]);
+        $unseenMissedPunchCount = 0;
+    }
+
     // Calculate total unseen notifications
-    $totalUnseenCount = $unseenLeaveCount + $unseenBookingCount + $unseenRegularisationCount + $unseenPendingEmployeeCount;
+    $totalUnseenCount = $unseenLeaveCount + $unseenBookingCount + $unseenRegularisationCount + $unseenPendingEmployeeCount + $unseenMissedPunchCount;
 @endphp
 
 @if (isset($setting['cust_theme_bg']) && $setting['cust_theme_bg'] == 'on')
@@ -166,12 +186,8 @@
 
     <div class="ms-auto" style="display: flex; justify-content: flex-end; align-items: center;">
         <ul class="list-unstyled mb-0" style="display: flex; align-items: center;">
-            <li class="dash-h-item me-2">
-                <a href="javascript:void(0)" onclick="if(window.refreshPageData){ window.refreshPageData(this); } else { var cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname; window.location.href = cleanUrl + '?refresh=' + new Date().getTime(); }" class="dash-head-link d-flex align-items-center justify-content-center" title="{{ __('Refresh Page Data') }}" style="background-color: white; border-radius: 50%; width: 40px; height: 40px; box-shadow: 0 2px 5px rgba(0,0,0,0.12); text-decoration: none;">
-                    <i class="ti ti-refresh text-primary" style="font-size: 20px;"></i>
-                </a>
-            </li>
-            @if (\Auth::user()->type == 'company' || in_array(strtolower(\Auth::user()->type), ['hr', 'director']))
+
+            @if (\Auth::user()->type == 'company' || in_array(strtolower(\Auth::user()->type), ['hr', 'director', 'employee']))
                 <li class="dropdown dash-h-item drp-notification">
                     <a class="dash-head-link dropdown-toggle arrow-none me-0 position-relative" 
                         data-bs-toggle="dropdown" href="#"
@@ -187,7 +203,7 @@
                     <div class="dropdown-menu dash-h-dropdown dropdown-menu-end" style="max-width: 400px;">
                         <div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">{{ __('Notifications') }}</h6>
-                            @if($leaveNotifications->count() > 0 || $bookingNotifications->count() > 0 || $regularisationNotifications->count() > 0 || $pendingEmployees->count() > 0)
+                            @if($leaveNotifications->count() > 0 || $bookingNotifications->count() > 0 || $regularisationNotifications->count() > 0 || $pendingEmployees->count() > 0 || $missedPunchNotifications->count() > 0)
                                 <a href="#!" id="mark-all-read" class="text-sm text-primary" style="font-size: 12px;">{{ __('Clear All') }}</a>
                             @endif
                         </div>
@@ -390,8 +406,50 @@
                                 @endforeach
                             @endif
 
+                            {{-- Missed Punch-Out Notifications Section --}}
+                            @if($missedPunchNotifications->count() > 0)
+                                <div class="px-3 py-2 bg-light border-top border-bottom mt-2">
+                                    <h6 class="mb-0 text-danger" style="font-size: 12px; font-weight: 600;">
+                                        <i class="ti ti-alert-circle"></i> Missed Punch-Out Notifications
+                                    </h6>
+                                </div>
+                                @foreach($missedPunchNotifications as $notification)
+                                    @php
+                                        $data = $notification->data;
+                                    @endphp
+                                    <div class="d-flex align-items-center p-2 border-bottom missed-punch-notification-item" 
+                                        data-notification-id="{{ $notification->id }}"
+                                        style="background-color: {{ $notification->read_at ? '#fff' : '#fff5f5' }};">
+                                        <div class="flex-grow-1 ms-2">
+                                            <h6 class="mb-0 text-danger" style="font-size: 14px; font-weight: 600;">
+                                                {{ $data['title'] ?? 'Missed Punch-Out Alert' }}
+                                            </h6>
+                                            <p class="mb-0 text-dark" style="font-size: 12px;">
+                                                {{ $data['message'] ?? 'You missed your punch out.' }}
+                                                @if(!empty($data['clock_in']))
+                                                    <br><small class="text-muted">Punched in: {{ $data['clock_in'] }}</small>
+                                                @endif
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="text-end">
+                                            <small class="text-muted">{{ $notification->created_at->diffForHumans() }}</small>
+                                            <br>
+                                        </div>
+
+                                        <div class="action-btn bg-danger ms-2">
+                                            <a href="{{ $data['url'] ?? route('attendanceemployee.index') }}" 
+                                                class="mx-3 btn btn-sm align-items-center mark-notification-read"
+                                                data-notification-id="{{ $notification->id }}">
+                                                <i class="ti ti-clock text-white"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
+
                             {{-- Empty State --}}
-                            @if($leaveNotifications->count() == 0 && $bookingNotifications->count() == 0 && $regularisationNotifications->count() == 0 && $pendingEmployees->count() == 0)
+                            @if($leaveNotifications->count() == 0 && $bookingNotifications->count() == 0 && $regularisationNotifications->count() == 0 && $pendingEmployees->count() == 0 && $missedPunchNotifications->count() == 0)
                                 <div class="text-center p-3">
                                     <p class="mb-0">{{ __('No notifications') }}</p>
                                 </div>

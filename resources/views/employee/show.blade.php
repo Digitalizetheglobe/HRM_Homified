@@ -44,13 +44,13 @@
         
         {{-- Offer Letter and Experience Certificate direct download buttons --}}
         <a href="javascript:void(0)" 
-            onclick="downloadFileBackground('{{ route('joiningletter.download.pdf', $employee->id) }}')"
+            onclick="downloadFileBackground('{{ route('joiningletter.download.pdf', $employee->id) }}', '{{ $employee->name }}-OfferLetter.pdf')"
             class="btn btn-sm btn-info">
             <i class="ti ti-download"></i> {{ __('Offer Letter') }}
         </a>
 
         <a href="javascript:void(0)" 
-            onclick="downloadFileBackground('{{ route('exp.download.pdf', $employee->id) }}')"
+            onclick="downloadFileBackground('{{ route('exp.download.pdf', $employee->id) }}', '{{ $employee->name }}-ExperienceCertificate.pdf')"
             class="btn btn-sm btn-info">
             <i class="ti ti-download"></i> {{ __('Experience Certificate') }}
         </a>
@@ -592,30 +592,6 @@
 
 @push('script-page')
 <script>
-    function downloadFileBackground(url) {
-        // Show a small loader or toast if needed
-        if (typeof show_toastr === 'function') {
-            show_toastr('Info', '{{ __("Preparing your download...") }}', 'info');
-        }
-
-        // Create a hidden iframe that is still rendered by the browser.
-        // This is necessary for html2canvas (used in PDF generation) to layout elements correctly.
-        var iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '1px';
-        iframe.style.height = '1px';
-        iframe.style.opacity = '0.01';
-        iframe.style.left = '-9999px';
-        iframe.src = url;
-        document.body.appendChild(iframe);
-
-        // Remove the iframe after a short delay once generation is complete
-        setTimeout(function() {
-            if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-            }
-        }, 15000);
-    }
 
     // Company Policy Scripts for Show Page
     $(document).on('click', '.track-policy-show', function() {

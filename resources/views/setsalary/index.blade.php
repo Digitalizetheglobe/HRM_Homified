@@ -75,7 +75,7 @@
                                             @if($employee->salaryIncrements && $employee->salaryIncrements->count() > 0 && Gate::check('payroll.salary.download_increment.all'))
                                                 <div class="action-btn bg-primary ms-2">
                                                     <a href="javascript:void(0)" 
-                                                        onclick="downloadFileBackground('{{ route('salary-increment.pdf', $employee->salaryIncrements->first()->id) }}')"
+                                                        onclick="downloadFileBackground('{{ route('salary-increment.pdf', $employee->salaryIncrements->first()->id) }}', '{{ $employee->name }}-IncrementLetter.pdf')"
                                                         class="mx-3 btn btn-sm align-items-center">
                                                         <i class="ti ti-download text-white"></i>
                                                     </a>
@@ -97,36 +97,5 @@
 
 @push('script-page')
 <script>
-    /**
-     * Downloads a file in the background using a hidden iframe.
-     * This avoids opening new tabs/windows which can cause crashes in APKs/PWAs.
-     */
-    function downloadFileBackground(url) {
-        // Show a small loader or toast if needed
-        if (typeof show_toastr === 'function') {
-            show_toastr('Info', '{{ __("Preparing your download...") }}', 'info');
-        }
-
-        // Create a hidden iframe that is still rendered by the browser
-        // This is necessary for html2canvas (used in PDF generation) to work properly
-        var iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '1200px';
-        iframe.style.height = '1500px';
-        iframe.style.left = '-9999px';
-        iframe.style.top = '-9999px';
-        iframe.style.border = 'none';
-        iframe.src = url;
-        
-        // Add to body
-        document.body.appendChild(iframe);
-        
-        // Remove from body after a reasonable time
-        setTimeout(function() {
-            if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-            }
-        }, 15000); // 15 seconds is usually enough for PDF generation and download trigger
-    }
 </script>
 @endpush

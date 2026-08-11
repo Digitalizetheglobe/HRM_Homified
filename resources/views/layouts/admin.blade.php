@@ -1586,7 +1586,121 @@
                 openDocumentModal(url, title);
             }
         });
+
+        /**
+         * Universal file download handler working across Desktop Web, Mobile Browsers, and Android APK / WebViews.
+         */
+        function downloadFileBackground(url, defaultFileName = 'document.pdf') {
+            if (typeof show_toastr === 'function') {
+                show_toastr('Info', '{{ __("Preparing your download...") }}', 'info');
+            }
+
+            var isCapacitor = (typeof window.Capacitor !== 'undefined');
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                var fileName = defaultFileName;
+                var disposition = response.headers.get('Content-Disposition');
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    var matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+                    if (matches != null && matches[1]) {
+                        fileName = matches[1].replace(/['"]/g, '');
+                    }
+                }
+
+                return response.blob().then(function(blob) {
+                    return { blob: blob, fileName: fileName };
+                });
+            })
+            .then(function(data) {
+                var blob = data.blob;
+                var fileName = data.fileName;
+                var blobUrl = window.URL.createObjectURL(blob);
+
+                if (isCapacitor) {
+                    try {
+                        window.open(url, '_system');
+                    } catch(e) {}
+                }
+
+                var a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(function() {
+                    if (document.body.contains(a)) {
+                        document.body.removeChild(a);
+                    }
+                    window.URL.revokeObjectURL(blobUrl);
+                }, 3000);
+
+                if (typeof show_toastr === 'function') {
+                    show_toastr('Success', '{{ __("File downloaded successfully!") }}', 'success');
+                }
+            })
+            .catch(function(error) {
+                console.warn('Blob download fetch error, falling back to direct window download:', error);
+                
+                if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+                    try {
+                        window.Capacitor.Plugins.Browser.open({ url: url });
+                    } catch(e) {
+                        window.open(url, '_system') || (window.location.href = url);
+                    }
+                } else {
+                    window.open(url, '_blank') || (window.location.href = url);
+                }
+            });
+        }
     </script>
+
+    @if(Auth::check() && Auth::user()->type == 'employee' && Auth::user()->employee)
+        @php
+            $todayAttendance = \App\Models\AttendanceEmployee::where('employee_id', Auth::user()->employee->id)
+                ->where('date', date('Y-m-d'))
+                ->whereNotNull('clock_in')
+                ->where('clock_in', '!=', '00:00:00')
+                ->where(function($q) {
+                    $q->whereNull('clock_out')
+                      ->orWhere('clock_out', '')
+                      ->orWhere('clock_out', '00:00:00');
+                })
+                ->first();
+            
+            $hasMissedPunchOutAlert = false;
+            if ($todayAttendance) {
+                try {
+                    $clockInDT = \Carbon\Carbon::parse($todayAttendance->date . ' ' . $todayAttendance->clock_in);
+                    if ($clockInDT->diffInMinutes(\Carbon\Carbon::now(), false) >= 540) {
+                        $hasMissedPunchOutAlert = true;
+                    }
+                } catch (\Exception $e) {}
+            }
+        @endphp
+
+        @if($hasMissedPunchOutAlert)
+            <script>
+                $(document).ready(function() {
+                    if (typeof show_toastr === 'function') {
+                        show_toastr('Error', '{{ __("You missed your punch out.") }}', 'error');
+                    }
+                });
+            </script>
+        @endif
+    @endif
 </body>
 
 </html>
