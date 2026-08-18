@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\CommonEmailTemplate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Twilio\Rest\Client;
 use Spatie\GoogleCalendar\Event as GoogleEvent;
 
@@ -18,8 +19,11 @@ class Utility extends Model
     private static $getsettings = null;
     private static $languages = null;
     private static $settings = null;
+    private static $colorset = null;
     private static $payments = null;
     private static $cookies = null;
+    private static $storageSettings = null;
+    private static $seoSettings = null;
 
     public static function settings()
     {
@@ -29,44 +33,45 @@ class Utility extends Model
         return self::$settings;
     }
 
+    public static function settingsCacheKey($createdBy): string
+    {
+        return 'utility.settings.' . $createdBy;
+    }
+
+    public static function clearSettingsCache($createdBy = null): void
+    {
+        $createdBy = $createdBy ?? (Auth::check() ? Auth::user()->creatorId() : 1);
+        self::$settings = null;
+        self::$colorset = null;
+        self::$cookies = null;
+        self::$storageSettings = null;
+        self::$seoSettings = null;
+        Cache::forget(self::settingsCacheKey($createdBy));
+        Cache::forget('utility.colorset.' . $createdBy);
+        Cache::forget('utility.seo');
+        Cache::forget('utility.cookies');
+        Cache::forget('utility.storage');
+        Cache::forget('utility.daily_quote');
+    }
+
     public static function fetchSettings($user_id = null)
     {
-        $data = DB::table('settings');
-        $isCollection = false;
-        
+        $createdBy = 1;
         if ($user_id != null) {
             $user = User::where('id', $user_id)->first();
-            if ($user) {
-                $data = $data->where('created_by', '=', $user_id)->get();
-                $isCollection = true;
-            } else {
-                $data = DB::table('settings')->where('created_by', '=', 1)->get();
-                $isCollection = true;
-            }
-        }
-        
-        if (\Auth::check()) {
-            if ($isCollection) {
-                // If $data is already a Collection, check if it's empty and get default settings
-                if (count($data) == 0) {
-                    $data = DB::table('settings')->where('created_by', '=', 1)->get();
-                }
-            } else {
-                // If it's still a query builder, continue building the query
-                $data = $data->where('created_by', '=', \Auth::user()->creatorId())->get();
-                if (count($data) == 0) {
-                    $data = DB::table('settings')->where('created_by', '=', 1)->get();
-                }
-            }
-        } else {
-            if (!$isCollection) {
-                // Only build query if $data is still a query builder
-                $data = $data->where('created_by', '=', 1)->get();
-            }
+            $createdBy = $user ? $user_id : 1;
+        } elseif (Auth::check()) {
+            $createdBy = Auth::user()->creatorId();
         }
 
-        $settings = [
-            "site_currency" => "USD",
+        return Cache::remember(self::settingsCacheKey($createdBy), 1800, function () use ($createdBy) {
+            $data = DB::table('settings')->where('created_by', '=', $createdBy)->get();
+            if (count($data) == 0) {
+                $data = DB::table('settings')->where('created_by', '=', 1)->get();
+            }
+
+            $settings = [
+                "site_currency" => "USD",
             "site_currency_symbol" => "$",
             "site_currency_symbol_position" => "pre",
             "site_date_format" => "M j, Y",
@@ -189,40 +194,47 @@ class Utility extends Model
         }
 
         return $settings;
+        });
     }
 
     public static function getStorageSetting()
     {
-        $data = DB::table('settings');
-        $data = $data->where('created_by', '=', 1);
-        $data     = $data->get();
-        $settings = [
-
-            "storage_setting" => "local",
-            "local_storage_validation" => "jpg,jpeg,png,xlsx,xls,csv,pdf",
-            "local_storage_max_upload_size" => "2048000",
-            "s3_key" => "",
-            "s3_secret" => "",
-            "s3_region" => "",
-            "s3_bucket" => "",
-            "s3_url"    => "",
-            "s3_endpoint" => "",
-            "s3_max_upload_size" => "",
-            "s3_storage_validation" => "",
-            "wasabi_key" => "",
-            "wasabi_secret" => "",
-            "wasabi_region" => "",
-            "wasabi_bucket" => "",
-            "wasabi_url" => "",
-            "wasabi_root" => "",
-            "wasabi_max_upload_size" => "",
-            "wasabi_storage_validation" => "",
-        ];
-
-        foreach ($data as $row) {
-            $settings[$row->name] = $row->value;
+        if (self::$storageSettings !== null) {
+            return self::$storageSettings;
         }
-        return $settings;
+
+        self::$storageSettings = Cache::remember('utility.storage', 1800, function () {
+            $data = DB::table('settings')->where('created_by', '=', 1)->get();
+            $settings = [
+                "storage_setting" => "local",
+                "local_storage_validation" => "jpg,jpeg,png,xlsx,xls,csv,pdf",
+                "local_storage_max_upload_size" => "2048000",
+                "s3_key" => "",
+                "s3_secret" => "",
+                "s3_region" => "",
+                "s3_bucket" => "",
+                "s3_url"    => "",
+                "s3_endpoint" => "",
+                "s3_max_upload_size" => "",
+                "s3_storage_validation" => "",
+                "wasabi_key" => "",
+                "wasabi_secret" => "",
+                "wasabi_region" => "",
+                "wasabi_bucket" => "",
+                "wasabi_url" => "",
+                "wasabi_root" => "",
+                "wasabi_max_upload_size" => "",
+                "wasabi_storage_validation" => "",
+            ];
+
+            foreach ($data as $row) {
+                $settings[$row->name] = $row->value;
+            }
+
+            return $settings;
+        });
+
+        return self::$storageSettings;
     }
 
 
@@ -1306,30 +1318,32 @@ class Utility extends Model
 
     public static function colorset()
     {
-        if (self::$settings === null) {
-            self::$settings = self::fetchcolorset();
+        if (self::$colorset === null) {
+            self::$colorset = self::fetchcolorset();
         }
-        return self::$settings;
+        return self::$colorset;
     }
 
     public static function fetchcolorset()
     {
-        if (\Auth::user()) {
-            if (\Auth::user()->type == 'super admin') {
-                $user = \Auth::user();
-
-                $setting = DB::table('settings')->where('created_by', $user->id)->pluck('value', 'name')->toArray();
-            } else {
-                $setting = DB::table('settings')->where('created_by', \Auth::user()->creatorId())->pluck('value', 'name')->toArray();
-            }
+        $createdBy = 1;
+        if (Auth::check()) {
+            $createdBy = Auth::user()->type == 'super admin' ? Auth::id() : Auth::user()->creatorId();
         } else {
-            $user = User::where('type', 'super admin')->first();
-            $setting = DB::table('settings')->where('created_by', $user->id)->pluck('value', 'name')->toArray();
+            $admin = Cache::remember('utility.super_admin_id', 3600, function () {
+                $user = User::where('type', 'super admin')->first();
+                return $user ? $user->id : 1;
+            });
+            $createdBy = $admin;
         }
-        if (!isset($setting['color'])) {
-            $setting = Utility::settings();
-        }
-        return $setting;
+
+        return Cache::remember('utility.colorset.' . $createdBy, 1800, function () use ($createdBy) {
+            $setting = DB::table('settings')->where('created_by', $createdBy)->pluck('value', 'name')->toArray();
+            if (!isset($setting['color'])) {
+                $setting = Utility::settings();
+            }
+            return $setting;
+        });
     }
 
     public static function GetLogo()
@@ -1789,12 +1803,20 @@ class Utility extends Model
 
     public static function getSeoSetting()
     {
-        $data = \DB::table('settings')->whereIn('name', ['meta_title', 'meta_description', 'meta_image'])->get();
-        $settings = [];
-        foreach ($data as $row) {
-            $settings[$row->name] = $row->value;
+        if (self::$seoSettings !== null) {
+            return self::$seoSettings;
         }
-        return $settings;
+
+        self::$seoSettings = Cache::remember('utility.seo', 1800, function () {
+            $data = \DB::table('settings')->whereIn('name', ['meta_title', 'meta_description', 'meta_image'])->get();
+            $settings = [];
+            foreach ($data as $row) {
+                $settings[$row->name] = $row->value;
+            }
+            return $settings;
+        });
+
+        return self::$seoSettings;
     }
 
     public static function webhookSetting($module)
@@ -1848,26 +1870,28 @@ class Utility extends Model
 
     public static function fetchCookieSetting()
     {
-        $data = \DB::table('settings')->whereIn('name', [
-            'enable_cookie', 'cookie_logging', 'cookie_title',
-            'cookie_description', 'necessary_cookies', 'strictly_cookie_title',
-            'strictly_cookie_description', 'more_information_description', 'contactus_url'
-        ])->get();
-        $settings = [
-            'enable_cookie' => 'off',
-            'necessary_cookies' => '',
-            'cookie_logging' => '',
-            'cookie_title' => '',
-            'cookie_description' => '',
-            'strictly_cookie_title' => '',
-            'strictly_cookie_description' => '',
-            'more_information_description' => '',
-            'contactus_url' => '',
-        ];
-        foreach ($data as $row) {
-            $settings[$row->name] = $row->value;
-        }
-        return $settings;
+        return Cache::remember('utility.cookies', 1800, function () {
+            $data = \DB::table('settings')->whereIn('name', [
+                'enable_cookie', 'cookie_logging', 'cookie_title',
+                'cookie_description', 'necessary_cookies', 'strictly_cookie_title',
+                'strictly_cookie_description', 'more_information_description', 'contactus_url'
+            ])->get();
+            $settings = [
+                'enable_cookie' => 'off',
+                'necessary_cookies' => '',
+                'cookie_logging' => '',
+                'cookie_title' => '',
+                'cookie_description' => '',
+                'strictly_cookie_title' => '',
+                'strictly_cookie_description' => '',
+                'more_information_description' => '',
+                'contactus_url' => '',
+            ];
+            foreach ($data as $row) {
+                $settings[$row->name] = $row->value;
+            }
+            return $settings;
+        });
     }
 
     public static function get_device_type($user_agent)

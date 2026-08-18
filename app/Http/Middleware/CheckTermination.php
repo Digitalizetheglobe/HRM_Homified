@@ -18,7 +18,7 @@ class CheckTermination
         }
 
         if (Auth::check() && Auth::user()->type == 'employee') {
-            $employee = Employee::where('user_id', Auth::id())->first();
+            $employee = Auth::user()->employee ?? Employee::where('user_id', Auth::id())->first();
             
             if ($employee) {
                 $termination = Termination::where('employee_id', $employee->id)

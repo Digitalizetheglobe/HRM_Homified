@@ -110,7 +110,7 @@
                     $employee = App\Models\Employee::where('user_id', \Auth::user()->id)->first(); 
                     $canViewAll = Gate::check('employee.view.all');
                     $canViewProfile = Gate::check('employee.profile.view.own');
-                    $empOwn = \Auth::user()->type != 'company' && $employee && $canViewProfile;
+                    $empOwn = !\Auth::user()->hasCompanyAccess() && $employee && $canViewProfile;
                     $empCount = ($empOwn ? 1 : 0) + ($canViewAll ? 1 : 0);
                 @endphp
                 
@@ -137,7 +137,7 @@
                             <li class="dash-item {{ Request::segment(1) == 'employee' && Request::segment(2) == 'index' ? 'active' : '' }}">
                                 <a href="{{ route('employee.index') }}"
                                    class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md">
-                                    {{ \Auth::user()->type == 'company' ? __('Employee') : __('All Employees') }}
+                                    {{ \Auth::user()->hasCompanyAccess() ? __('Employee') : __('All Employees') }}
                                 </a>
                             </li>
                             @endif
@@ -159,7 +159,7 @@
                 @endif
             @endif
 
-            @if (\Auth::user()->type == 'company' || \Auth::user()->type == 'super admin')
+            @if (\Auth::user()->hasCompanyAccess() || \Auth::user()->type == 'super admin')
                 <li class="dash-item {{ Request::segment(1) == 'employee-permissions' ? 'active' : '' }}">
                     <a href="{{ route('employee-permissions.index') }}"
                        class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
@@ -169,7 +169,33 @@
                         <span class="dash-mtext flex-grow">{{ __('Employee Permissions') }}</span>
                     </a>
                 </li>
-            @endif            <!-- Attendance -->
+            @endif
+
+            @if (Gate::check('Manage User') && \Auth::user()->type != 'super admin')
+                <li class="dash-item {{ Request::segment(1) == 'user' ? 'active' : '' }}">
+                    <a href="{{ route('user.index') }}"
+                       class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
+                        <span class="dash-micon shadow-none" style="background: none;">
+                            <i class="ti ti-users text-white text-[22px]"></i>
+                        </span>
+                        <span class="dash-mtext flex-grow">{{ __('User') }}</span>
+                    </a>
+                </li>
+            @endif
+
+            @if (Gate::check('Manage Role'))
+                <li class="dash-item {{ Request::segment(1) == 'roles' ? 'active' : '' }}">
+                    <a href="{{ route('roles.index') }}"
+                       class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
+                        <span class="dash-micon shadow-none" style="background: none;">
+                            <i class="ti ti-user-check text-white text-[22px]"></i>
+                        </span>
+                        <span class="dash-mtext flex-grow">{{ __('Role') }}</span>
+                    </a>
+                </li>
+            @endif
+
+            <!-- Attendance -->
             @if (Gate::check('attendance.calendar.view.own') || Gate::check('attendance.calendar.view.all') || 
                  Gate::check('attendance.regularisation.view.own') || Gate::check('attendance.regularisation.view.all') || 
                  Gate::check('attendance.marked.view.own') || Gate::check('attendance.marked.view.all') || 
@@ -186,7 +212,7 @@
                     </a>
                     <ul class="dash-submenu">
                         <!-- Attendance Calendar -->
-                        @if (\Auth::user()->type != 'company' && Gate::check('attendance.calendar.view.own'))
+                        @if (!\Auth::user()->hasCompanyAccess() && Gate::check('attendance.calendar.view.own'))
                             <li class="dash-item {{ Request::segment(1) == 'attendance-calendar' && request('own') ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('attendance.calendar') }}?own=1">
                                     {{ __('Attendance Calendar') }}
@@ -196,13 +222,13 @@
                         @if (Gate::check('attendance.calendar.view.all'))
                             <li class="dash-item {{ Request::segment(1) == 'attendance-calendar' && !request('own') ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('attendance.calendar') }}">
-                                    {{ \Auth::user()->type == 'company' ? __('Attendance Calendar') : __('All Employees Calendar') }}
+                                    {{ \Auth::user()->hasCompanyAccess() ? __('Attendance Calendar') : __('All Employees Calendar') }}
                                 </a>
                             </li>
                         @endif
                         
                         <!-- Attendance Regularisation -->
-                        @if (\Auth::user()->type != 'company' && Gate::check('attendance.regularisation.view.own'))
+                        @if (!\Auth::user()->hasCompanyAccess() && Gate::check('attendance.regularisation.view.own'))
                             <li class="dash-item {{ Request::segment(1) == 'attendance-regularisation' && request('own') ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('attendance-regularisation.index') }}?own=1">
                                     {{ __('Attendance Regularisation') }}
@@ -212,13 +238,13 @@
                         @if (Gate::check('attendance.regularisation.view.all'))
                             <li class="dash-item {{ Request::segment(1) == 'attendance-regularisation' && !request('own') ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('attendance-regularisation.index') }}">
-                                    {{ \Auth::user()->type == 'company' ? __('Attendance Regularisation') : __('All Employees Regularisation') }}
+                                    {{ \Auth::user()->hasCompanyAccess() ? __('Attendance Regularisation') : __('All Employees Regularisation') }}
                                 </a>
                             </li>
                         @endif
 
                         <!-- Marked Attendance -->
-                        @if (\Auth::user()->type != 'company' && Gate::check('attendance.marked.view.own'))
+                        @if (!\Auth::user()->hasCompanyAccess() && Gate::check('attendance.marked.view.own'))
                             <li class="dash-item">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('attendanceemployee.index') }}?own=1">
                                     {{ __('Marked Attendance') }}
@@ -228,7 +254,7 @@
                         @if (Gate::check('attendance.marked.view.all'))
                             <li class="dash-item">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('attendanceemployee.index') }}">
-                                    {{ \Auth::user()->type == 'company' ? __('Marked Attendance') : __('All Employees Attendance') }}
+                                    {{ \Auth::user()->hasCompanyAccess() ? __('Marked Attendance') : __('All Employees Attendance') }}
                                 </a>
                             </li>
                         @endif
@@ -269,7 +295,7 @@
                     <span class="dash-arrow"><i data-feather="chevron-right"></i></span>
                 </a>
                 <ul class="dash-submenu">
-                    @if (\Auth::user()->type != 'company' && Gate::check('leave.manage.view.own'))
+                    @if (!\Auth::user()->hasCompanyAccess() && Gate::check('leave.manage.view.own'))
                         <li class="dash-item {{ Request::segment(1) == 'calender' && request('own') ? 'active' : '' }}">
                             <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('leave.index') }}?own=1">
                                 {{ __('Manage Leave') }}
@@ -279,7 +305,7 @@
                     @if (Gate::check('leave.manage.view.all'))
                         <li class="dash-item {{ Request::segment(1) == 'calender' && !request('own') ? 'active' : '' }}">
                             <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('leave.index') }}">
-                                {{ \Auth::user()->type == 'company' ? __('Manage Leave') : __('All Employees Leaves') }}
+                                {{ \Auth::user()->hasCompanyAccess() ? __('Manage Leave') : __('All Employees Leaves') }}
                             </a>
                         </li>
                     @endif
@@ -287,7 +313,7 @@
                     @if (Gate::check('leave.details.view.all'))
                         <li class="dash-item {{ Request::segment(1) == 'leave-details' && !request('own') ? 'active' : '' }}">
                             <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('leave.details') }}">
-                                {{ \Auth::user()->type == 'company' ? __('Leave Details') : __('All Employees Leave Details') }}
+                                {{ \Auth::user()->hasCompanyAccess() ? __('Leave Details') : __('All Employees Leave Details') }}
                             </a>
                         </li>
                     @endif
@@ -321,7 +347,7 @@
                         <span class="dash-arrow"><i data-feather="chevron-right"></i></span>
                     </a>
                     <ul class="dash-submenu">
-                        @if (\Auth::user()->type != 'company' && Gate::check('payroll.salary.view.own'))
+                        @if (!\Auth::user()->hasCompanyAccess() && Gate::check('payroll.salary.view.own'))
                             <li class="dash-item {{ Request::segment(1) == 'setsalary' && request('own') ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('setsalary.index') }}?own=1">
                                     {{ __('Set Salary') }}
@@ -331,12 +357,12 @@
                         @if (Gate::check('payroll.salary.view.all'))
                             <li class="dash-item {{ Request::segment(1) == 'setsalary' && !request('own') ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('setsalary.index') }}">
-                                    {{ \Auth::user()->type == 'company' ? __('Set Salary') : __('All Employees Salary') }}
+                                    {{ \Auth::user()->hasCompanyAccess() ? __('Set Salary') : __('All Employees Salary') }}
                                 </a>
                             </li>
                         @endif
                         
-                        @if (\Auth::user()->type != 'company' && Gate::check('payroll.payslip.view.own'))
+                        @if (!\Auth::user()->hasCompanyAccess() && Gate::check('payroll.payslip.view.own'))
                             <li class="dash-item">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('payslip.index') }}?own=1">
                                     {{ __('Payslip') }}
@@ -346,26 +372,26 @@
                         @if (Gate::check('payroll.payslip.view.all'))
                             <li class="dash-item">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('payslip.index') }}">
-                                    {{ \Auth::user()->type == 'company' ? __('Payslip') : __('All Employees Payslip') }}
+                                    {{ \Auth::user()->hasCompanyAccess() ? __('Payslip') : __('All Employees Payslip') }}
                                 </a>
                             </li>
                         @endif
                         
-                        <!-- @if (Gate::check('payroll.salary_arrears.view.all') || \Auth::user()->type == 'company')
+                        <!-- @if (Gate::check('payroll.salary_arrears.view.all') || \Auth::user()->hasCompanyAccess())
                             <li class="dash-item {{ Request::segment(1) == 'salary-arrears' ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('salary-arrears.index') }}">
                                     {{ __('Salary Arrears') }}
                                 </a>
                             </li>
                         @endif
-                        @if (Gate::check('payroll.other_deduction.view.all') || \Auth::user()->type == 'company')
+                        @if (Gate::check('payroll.other_deduction.view.all') || \Auth::user()->hasCompanyAccess())
                             <li class="dash-item {{ Request::segment(1) == 'other-deduction' ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('other-deduction.index') }}">
                                     {{ __('Other Deduction') }}
                                 </a>
                             </li>
                         @endif
-                        @if (Gate::check('payroll.petrol_allowance.view.all') || \Auth::user()->type == 'company')
+                        @if (Gate::check('payroll.petrol_allowance.view.all') || \Auth::user()->hasCompanyAccess())
                             <li class="dash-item {{ Request::segment(1) == 'petrol-allowance' ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('petrol-allowance.index') }}">
                                     {{ __('Petrol Allowance') }}
@@ -381,7 +407,7 @@
                             </li>
                         @endif -->
                         
-                        @if ($isFinanceAccountsUser() || \Auth::user()->type == 'company' || Gate::check('payroll.salary_processing.view.all'))
+                        @if ($isFinanceAccountsUser() || \Auth::user()->hasCompanyAccess() || Gate::check('payroll.salary_processing.view.all'))
                             <li class="dash-item {{ Request::segment(1) == 'salary-processing' ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('salary-processing.index') }}">
                                     {{ __('Salary Processing') }}
@@ -407,7 +433,7 @@
             <!-- Admin Company Policy -->
             @if(Gate::check('company_policy.manage.view.own') || Gate::check('company_policy.manage.view.all'))
                 @php
-                    $cpOwn = \Auth::user()->type != 'company' && Gate::check('company_policy.manage.view.own');
+                    $cpOwn = !\Auth::user()->hasCompanyAccess() && Gate::check('company_policy.manage.view.own');
                     $cpAll = Gate::check('company_policy.manage.view.all');
                     $cpCount = ($cpOwn ? 1 : 0) + ($cpAll ? 1 : 0);
                 @endphp
@@ -432,7 +458,7 @@
                             @if($cpAll)
                                 <li class="dash-item {{ Request::segment(1) == 'company-policy' && !request('own') ? 'active' : '' }}">
                                     <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('company-policy.index') }}">
-                                        {{ \Auth::user()->type == 'company' ? __('Company Policy') : __('All Company Policies') }}
+                                        {{ \Auth::user()->hasCompanyAccess() ? __('Company Policy') : __('All Company Policies') }}
                                     </a>
                                 </li>
                             @endif
@@ -456,7 +482,7 @@
             <!-- Ticket -->
             @if(Gate::check('ticket.manage.view.own') || Gate::check('ticket.manage.view.all'))
                 @php
-                    $tktOwn = \Auth::user()->type != 'company' && Gate::check('ticket.manage.view.own');
+                    $tktOwn = !\Auth::user()->hasCompanyAccess() && Gate::check('ticket.manage.view.own');
                     $tktAll = Gate::check('ticket.manage.view.all');
                     $tktCount = ($tktOwn ? 1 : 0) + ($tktAll ? 1 : 0);
                 @endphp
@@ -481,7 +507,7 @@
                             @if($tktAll)
                                 <li class="dash-item {{ Request::segment(1) == 'ticket' && !request('own') ? 'active' : '' }}">
                                     <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('ticket.index') }}">
-                                        {{ \Auth::user()->type == 'company' ? __('Ticket') : __('All Employees Tickets') }}
+                                        {{ \Auth::user()->hasCompanyAccess() ? __('Ticket') : __('All Employees Tickets') }}
                                     </a>
                                 </li>
                             @endif
@@ -499,7 +525,7 @@
                 @endif
             @endif
 
-            @if(Gate::check('holiday.manage.view.own') || Gate::check('holiday.manage.view.all') || Gate::check('Manage Holiday') || \Auth::user()->type == 'company')
+            @if(Gate::check('holiday.manage.view.own') || Gate::check('holiday.manage.view.all') || Gate::check('Manage Holiday') || \Auth::user()->hasCompanyAccess())
                 <li class="dash-item {{ Request::segment(1) == 'holiday' ? 'active' : '' }}">
                     <a href="{{ route('holiday.index') }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                         <span class="dash-micon shadow-none" style="background: none;">
@@ -678,7 +704,7 @@
 
 
             <!-- Loan -->
-            <!-- @if (\Auth::user()->type == 'company')
+            <!-- @if (\Auth::user()->hasCompanyAccess())
                 <li class="dash-item {{ Request::segment(1) == 'loan' ? 'active' : '' }}">
                     <a href="{{ route('loan.index') }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                         <span class="dash-micon shadow-none" style="background: none;">
@@ -692,9 +718,9 @@
             <!-- Exit Formalities -->
             @if(Gate::check('exit.resignation.view.own') || Gate::check('exit.resignation.view.all') || Gate::check('exit.termination.view.own') || Gate::check('exit.termination.view.all'))
             @php
-                $resOwn = \Auth::user()->type != 'company' && Gate::check('exit.resignation.view.own');
+                $resOwn = !\Auth::user()->hasCompanyAccess() && Gate::check('exit.resignation.view.own');
                 $resAll = Gate::check('exit.resignation.view.all');
-                $termOwn = \Auth::user()->type != 'company' && Gate::check('exit.termination.view.own');
+                $termOwn = !\Auth::user()->hasCompanyAccess() && Gate::check('exit.termination.view.own');
                 $termAll = Gate::check('exit.termination.view.all');
                 $exitCount = ($resOwn ? 1 : 0) + ($resAll ? 1 : 0) + ($termOwn ? 1 : 0) + ($termAll ? 1 : 0);
             @endphp
@@ -719,7 +745,7 @@
                     @if($resAll)
                         <li class="dash-item {{ Request::segment(1) == 'resignation' && !request('own') ? 'active' : '' }}">
                             <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('resignation.index') }}">
-                                {{ \Auth::user()->type == 'company' ? __('Resignation') : __('All Employees Resignation') }}
+                                {{ \Auth::user()->hasCompanyAccess() ? __('Resignation') : __('All Employees Resignation') }}
                             </a>
                         </li>
                     @endif
@@ -734,7 +760,7 @@
                     @if($termAll)
                         <li class="dash-item {{ Request::segment(1) == 'termination' && !request('own') ? 'active' : '' }}">
                             <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('termination.index') }}">
-                                {{ \Auth::user()->type == 'company' ? __('Termination') : __('All Employees Termination') }}
+                                {{ \Auth::user()->hasCompanyAccess() ? __('Termination') : __('All Employees Termination') }}
                             </a>
                         </li>
                     @endif

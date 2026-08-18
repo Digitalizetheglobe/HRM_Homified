@@ -1,36 +1,33 @@
 @php
     use App\Models\Utility;
     use Illuminate\Support\Facades\Auth;
+    use Illuminate\Support\Facades\Cache;
     use Illuminate\Support\Facades\DB;
     use Illuminate\Support\Facades\Schema;
 
     $users = Auth::user();
     $currantLang = $users->currentLanguage();
     $profile = asset('storage/uploads/avatar/');
-    $unseenCounter = App\Models\ChMessage::where('to_id', Auth::user()->id)
-        ->where('seen', 0)
-        ->count();
-    $unseen_count = DB::select('SELECT from_id, COUNT(*) AS totalmasseges FROM ch_messages WHERE seen = 0 GROUP BY from_id');
+    $authId = Auth::id();
+    $userType = strtolower((string) $users->type);
 
-    $unseenCounter = App\Models\ChMessage::where('to_id', Auth::id())
-        ->where('seen', 0)
-        ->count();
+    $unseenCounter = Cache::remember('chat.unseen.' . $authId, 30, function () use ($authId) {
+        return App\Models\ChMessage::where('to_id', $authId)->where('seen', 0)->count();
+    });
 
-    // Get leave notifications (for company type and forwarded Casual Leaves to HR/Director)
     $leaveNotifications = collect([]);
     $unseenLeaveCount = 0;
-    if (\Auth::user()->type == 'company') {
-        // Company sees all pending leaves that haven't been cleared
+    if ($userType == 'company') {
         $leaveNotifications = \App\Models\Leave::where('status', 'pending')
             ->where('seen_by_manager', 0)
             ->with(['employees.user', 'leaveType'])
             ->orderBy('created_at', 'desc')
+            ->limit(10)
             ->get();
         $unseenLeaveCount = $leaveNotifications->count();
-    } elseif (in_array(strtolower(\Auth::user()->type), ['director', 'hr'])) {
-        // Directors and HR see only forwarded Casual Leave requests that haven't been cleared
+    } elseif (in_array($userType, ['director', 'hr'])) {
         $leaveNotifications = \App\Models\Leave::where('status', 'pending')
-            ->where('forwarded_to_director_id', \Auth::id())
+            ->where('forwarded_to_director_id', $authId)
             ->where('company_approved', true)
             ->where('director_approved', false)
             ->where('seen_by_director', 0)
@@ -39,93 +36,65 @@
             })
             ->with(['employees.user', 'leaveType', 'forwardedByCompany'])
             ->orderBy('forwarded_at', 'desc')
+            ->limit(10)
             ->get();
         $unseenLeaveCount = $leaveNotifications->count();
     }
 
-    // Get booking notifications (for company, hr, director types)
     $bookingNotifications = collect([]);
     $unseenBookingCount = 0;
-    if (in_array(strtolower(\Auth::user()->type), ['company', 'hr', 'director'])) {
-        try {
-            if (\Schema::hasTable('notifications')) {
-                $bookingNotifications = Auth::user()->unreadNotifications()
-                    ->where('type', 'App\Notifications\BookingCreatedNotification')
-                    ->orderBy('created_at', 'desc')
-                    ->take(10)
-                    ->get();
-                $unseenBookingCount = $bookingNotifications->count();
-            }
-        } catch (\Exception $e) {
-            // Table doesn't exist or query failed, use empty collection
-            $bookingNotifications = collect([]);
-            $unseenBookingCount = 0;
-        }
-    }
-
-    // Get attendance regularization notifications (for company, hr, director types)
     $regularisationNotifications = collect([]);
     $unseenRegularisationCount = 0;
-    if (in_array(strtolower(\Auth::user()->type), ['company', 'hr', 'director'])) {
-        try {
-            if (\Schema::hasTable('notifications')) {
-                // Get regularisation notifications - use OR condition to catch both exact and partial matches
-                $regularisationNotifications = Auth::user()->unreadNotifications()
-                    ->where(function($query) {
-                        $query->where('type', 'App\Notifications\AttendanceRegularisationNotification')
-                              ->orWhere('type', 'LIKE', '%AttendanceRegularisation%');
-                    })
-                    ->orderBy('created_at', 'desc')
-                    ->take(10)
-                    ->get();
-                
-                // Count unread notifications
-                $unseenRegularisationCount = $regularisationNotifications->count();
-            }
-        } catch (\Exception $e) {
-            // Table doesn't exist or query failed, use empty collection
-            \Log::error('Error fetching regularisation notifications', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            $regularisationNotifications = collect([]);
-            $unseenRegularisationCount = 0;
+    $missedPunchNotifications = collect([]);
+    $unseenMissedPunchCount = 0;
+
+    $hasNotificationsTable = Cache::remember('schema.has_notifications', 3600, function () {
+        return Schema::hasTable('notifications');
+    });
+
+    if ($hasNotificationsTable) {
+        $unreadNotifications = $users->unreadNotifications()
+            ->orderBy('created_at', 'desc')
+            ->limit(30)
+            ->get();
+
+        if (in_array($userType, ['company', 'hr', 'director'])) {
+            $bookingNotifications = $unreadNotifications->filter(function ($n) {
+                return $n->type === 'App\Notifications\BookingCreatedNotification';
+            })->take(10)->values();
+            $unseenBookingCount = $bookingNotifications->count();
+
+            $regularisationNotifications = $unreadNotifications->filter(function ($n) {
+                return $n->type === 'App\Notifications\AttendanceRegularisationNotification'
+                    || str_contains($n->type, 'AttendanceRegularisation');
+            })->take(10)->values();
+            $unseenRegularisationCount = $regularisationNotifications->count();
         }
+
+        $missedPunchNotifications = $unreadNotifications->filter(function ($n) {
+            return $n->type === 'App\Notifications\MissedPunchOutNotification'
+                || str_contains($n->type, 'MissedPunchOut');
+        })->take(10)->values();
+        $unseenMissedPunchCount = $missedPunchNotifications->count();
     }
 
-    // Get pending employee notifications
     $pendingEmployees = collect([]);
     $unseenPendingEmployeeCount = 0;
-    if (in_array(strtolower(\Auth::user()->type), ['company', 'hr', 'director'])) {
+    if (in_array($userType, ['company', 'hr', 'director'])) {
         $pendingEmployees = \App\Models\Employee::where('approval_status', 'pending')
             ->orderBy('created_at', 'desc')
-            ->take(10)
+            ->limit(10)
             ->get();
         $unseenPendingEmployeeCount = $pendingEmployees->count();
     }
 
-    // Get missed punch notifications (for all users including employees)
-    $missedPunchNotifications = collect([]);
-    $unseenMissedPunchCount = 0;
-    try {
-        if (\Schema::hasTable('notifications') && Auth::check()) {
-            $missedPunchNotifications = Auth::user()->unreadNotifications()
-                ->where(function($query) {
-                    $query->where('type', 'App\Notifications\MissedPunchOutNotification')
-                          ->orWhere('type', 'LIKE', '%MissedPunchOut%');
-                })
-                ->orderBy('created_at', 'desc')
-                ->take(10)
-                ->get();
-            $unseenMissedPunchCount = $missedPunchNotifications->count();
-        }
-    } catch (\Exception $e) {
-        $missedPunchNotifications = collect([]);
-        $unseenMissedPunchCount = 0;
-    }
-
-    // Calculate total unseen notifications
     $totalUnseenCount = $unseenLeaveCount + $unseenBookingCount + $unseenRegularisationCount + $unseenPendingEmployeeCount + $unseenMissedPunchCount;
+
+    if (!isset($quote) || empty($quote)) {
+        $quote = Cache::remember('utility.daily_quote', 600, function () {
+            return \App\Models\DailyQuote::inRandomOrder()->first();
+        });
+    }
 @endphp
 
 @if (isset($setting['cust_theme_bg']) && $setting['cust_theme_bg'] == 'on')

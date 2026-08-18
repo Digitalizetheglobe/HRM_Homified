@@ -86,16 +86,16 @@
                                 <th rowspan="2">{{ __('Status') }}</th>
                             </tr>
                             <tr>
-                                <th style="background-color: #e3f2fd;">{{ __('Basic Pay') }}<br><small>(41%)</small></th>
-                                <th style="background-color: #e3f2fd;">{{ __('HRA') }}<br><small>(25%)</small></th>
-                                <th style="background-color: #e3f2fd;">{{ __('Conveyance') }}<br><small>(21%)</small></th>
-                                <th style="background-color: #e3f2fd;">{{ __('Special Allowance') }}<br><small>(10%)</small></th>
-                                <th style="background-color: #e3f2fd;">{{ __('Medical') }}<br><small>(3%)</small></th>
+                                <th style="background-color: #e3f2fd;">{{ __('Basic Pay') }}<br><small>(45%)</small></th>
+                                <th style="background-color: #e3f2fd;">{{ __('HRA') }}<br><small>(18%)</small></th>
+                                <th style="background-color: #e3f2fd;">{{ __('Conveyance') }}<br><small>(3.72%)</small></th>
+                                <th style="background-color: #e3f2fd;">{{ __('Special Allowance') }}<br><small>(30.37%)</small></th>
+                                <th style="background-color: #e3f2fd;">{{ __('Medical') }}<br><small>(2.91%)</small></th>
                                 <th style="background-color: #fff3e0;">{{ __('LOP Days') }}</th>
                                 <th style="background-color: #fff3e0;">{{ __('LOP Amount') }}</th>
-                                <th style="background-color: #fff3e0;">{{ __('PT') }}<br><small>(₹200)</small></th>
+                                <th style="background-color: #fff3e0;">{{ __('PT') }}</th>
                                 <th style="background-color: #fff3e0;">{{ __('Salary Advance') }}</th>
-                                <th style="background-color: #fff3e0;">{{ __('Other Deductions') }}</th>
+                                <th style="background-color: #fff3e0;">{{ __('Casual Leave Deduction') }}</th>
                             </tr>
                         </thead>
                         <tbody>

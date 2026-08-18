@@ -60,7 +60,7 @@
 
     <!-- Favicon icon -->
     <link rel="icon"
-        href="{{ $logo . '/' . (isset($company_favicon) && !empty($company_favicon) ? $company_favicon . '?' . time() : 'favicon.png' . '?' . time()) }}"
+        href="{{ $logo . '/' . (isset($company_favicon) && !empty($company_favicon) ? $company_favicon : 'favicon.png') }}"
         type="image/x-icon" />
 
     <!-- PWA: Manifest & Theme -->
@@ -85,12 +85,8 @@
     <link rel="stylesheet" href="{{ asset('assets/fonts/material.css') }}">
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-
-
-
     <!-- Datepicker CSS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css" media="print" onload="this.media='all'">
 
     <!-- Mobile Date Input Fix -->
     <style>
@@ -143,7 +139,6 @@
     <!-- vendor css -->
 
     <link rel="stylesheet" href="{{ asset('assets/css/customizer.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
 
     @stack('css-page')
     @if ($SITE_RTL == 'on')
@@ -1669,16 +1664,18 @@
 
     @if(Auth::check() && Auth::user()->type == 'employee' && Auth::user()->employee)
         @php
-            $todayAttendance = \App\Models\AttendanceEmployee::where('employee_id', Auth::user()->employee->id)
-                ->where('date', date('Y-m-d'))
-                ->whereNotNull('clock_in')
-                ->where('clock_in', '!=', '00:00:00')
-                ->where(function($q) {
-                    $q->whereNull('clock_out')
-                      ->orWhere('clock_out', '')
-                      ->orWhere('clock_out', '00:00:00');
-                })
-                ->first();
+            $todayAttendance = \Illuminate\Support\Facades\Cache::remember('missed_punch.' . Auth::id() . '.' . date('Y-m-d'), 60, function () {
+                return \App\Models\AttendanceEmployee::where('employee_id', Auth::user()->employee->id)
+                    ->where('date', date('Y-m-d'))
+                    ->whereNotNull('clock_in')
+                    ->where('clock_in', '!=', '00:00:00')
+                    ->where(function($q) {
+                        $q->whereNull('clock_out')
+                          ->orWhere('clock_out', '')
+                          ->orWhere('clock_out', '00:00:00');
+                    })
+                    ->first();
+            });
             
             $hasMissedPunchOutAlert = false;
             if ($todayAttendance) {

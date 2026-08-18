@@ -6,6 +6,9 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 use App\Models\Employee;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -68,6 +71,59 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at' => 'datetime',
     ];
 
+    /**
+     * Log this user out of every device and stored session.
+     * Pass the current session id to skip deleting the active request session (needed on Windows).
+     */
+    public function invalidateAllSessions(?string $exceptSessionId = null): void
+    {
+        $this->setRememberToken(Str::random(60));
+        $this->save();
+
+        $driver = config('session.driver');
+
+        if ($driver === 'database') {
+            $query = DB::table(config('session.table', 'sessions'))->where('user_id', $this->id);
+
+            if ($exceptSessionId) {
+                $query->where('id', '!=', $exceptSessionId);
+            }
+
+            $query->delete();
+
+            return;
+        }
+
+        if ($driver !== 'file') {
+            return;
+        }
+
+        $path = config('session.files');
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $userId = (int) $this->id;
+
+        foreach (File::files($path) as $file) {
+            $sessionId = $file->getFilename();
+            if ($exceptSessionId && $sessionId === $exceptSessionId) {
+                continue;
+            }
+
+            $content = @file_get_contents($file->getPathname());
+            if ($content === false || $content === '') {
+                continue;
+            }
+
+            $belongsToUser = preg_match('/login_web_[a-f0-9]+";i:' . $userId . ';/', $content)
+                || preg_match('/login_web_[a-f0-9]+";s:\d+:"' . preg_quote((string) $userId, '/') . '"/', $content);
+
+            if ($belongsToUser) {
+                @unlink($file->getPathname());
+            }
+        }
+    }
 
     public static function defaultEmail()
     {
@@ -2680,6 +2736,16 @@ class User extends Authenticatable implements MustVerifyEmail
     // }
 
 
+
+    /**
+     * Same operational access as the Company user (menu, gates, and admin screens).
+     */
+    public function hasCompanyAccess(): bool
+    {
+        $type = strtolower(trim((string) $this->type));
+
+        return in_array($type, ['company', 'super admin', 'director'], true);
+    }
 
     /**
      * Determine if the user has Human Resource privileges.

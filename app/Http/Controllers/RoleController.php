@@ -25,7 +25,7 @@ class RoleController extends Controller
     {
         if (\Auth::user()->can('Create Role')) {
             $user = \Auth::user();
-            if ($user->type == 'super admin' || $user->type == 'company') {
+            if ($user->hasCompanyAccess()) {
                 $permissions = Permission::all()->pluck('name', 'id')->toArray();
             } else {
                 $permissions = new Collection();
@@ -83,7 +83,7 @@ class RoleController extends Controller
         if (\Auth::user()->can('Edit Role')) {
 
             $user = \Auth::user();
-            if ($user->type == 'super admin' || $user->type == 'company') {
+            if ($user->hasCompanyAccess()) {
                 $permissions = Permission::all()->pluck('name', 'id')->toArray();
             } else {
                 $permissions = new Collection();

@@ -77,102 +77,38 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
                 continue;
             }
 
-            // Calculate Monthly Days
-            $startDate = Carbon::create($this->year, $this->month)->startOfMonth();
-            $endDate = Carbon::create($this->year, $this->month)->endOfMonth();
-            
-            // Handle null or empty company_doj
-            if (empty($employee->company_doj)) {
-                // If no joining date, assume employee was present for the entire month
-                $joiningDate = $startDate->copy();
-            } else {
-                $joiningDate = Carbon::parse($employee->company_doj);
-                if ($joiningDate->gt($endDate)) {
-                    continue;
+            if (!empty($employee->company_doj)) {
+                try {
+                    if (Carbon::parse($employee->company_doj)->gt(Carbon::create($this->year, $this->month)->endOfMonth())) {
+                        continue;
+                    }
+                } catch (\Exception $e) {
+                    // keep employee if joining date cannot be parsed
                 }
             }
-            if ($joiningDate->gt($startDate)) {
-                $startDate = $joiningDate->copy();
-            }
 
-            $termination = Termination::where('employee_id', $employee->id)
-                ->whereDate('termination_date', '>=', $startDate)
-                ->whereDate('termination_date', '<=', $endDate)
-                ->first();
+            $figures = $this->paySlipController->calculatePdfSalaryFigures($employee, $this->year, $this->month);
 
-            $resignation = Resignation::where('employee_id', $employee->id)
-                ->whereDate('resignation_date', '>=', $startDate)
-                ->whereDate('resignation_date', '<=', $endDate)
-                ->first();
-
-            if ($termination) {
-                $endDate = Carbon::parse($termination->termination_date);
-            } elseif ($resignation) {
-                $endDate = Carbon::parse($resignation->resignation_date);
-            }
-
-            $monthlyDays = $startDate->diffInDays($endDate) + 1;
-
-            // Calculate Payable Days
-            $payableDays = $this->paySlipController->getFinalPayableDays($employee->id, $this->year, $this->month);
-
-            // Calculate Total Leave (only EL, SL, and CO)
-            $totalLeave = $this->paySlipController->calculateTotalLeave($employee->id, $this->year, $this->month);
-
-            // Calculate LOP - if payable days were edited, adjust LOP accordingly
-            $customPayableDays = EmployeePayableDay::where('employee_id', $employee->id)
-                ->where('month', (int)$this->month)
-                ->where('year', (int)$this->year)
-                ->first();
-
-            if ($customPayableDays) {
-                $lopDays = max(0, $monthlyDays - $payableDays);
-            } else {
-                $lopDays = $this->paySlipController->calculateLOPDays($employee->id, $this->year, $this->month);
-            }
-
-            // Get Actual Salary
-            $actualSalary = $employee->salary ?? 0;
-
-            // Calculate Monthly Salary using standard 30 days
-            $standardMonthlyDays = 30;
-            $monthlySalary = $standardMonthlyDays > 0 ? ($actualSalary * ($payableDays / $standardMonthlyDays)) : 0;
-
-            // Calculate Monthly Salary breakdown (percentages of Monthly Salary)
-            $basicPay = round($monthlySalary * 0.41, 2); // 41%
-            $hra = round($monthlySalary * 0.25, 2); // 25%
-            $conveyanceAllowance = round($monthlySalary * 0.21, 2); // 21%
-            $specialAllowance = round($monthlySalary * 0.10, 2); // 10%
-            $medicalAllowance = round($monthlySalary * 0.03, 2); // 3%
-
-            // Get Salary Advance
-            $salaryAdvance = $this->getSalaryAdvance($employee->id, $this->year, $this->month);
-
-            // Get Salary Arrears
-            $salaryArrears = SalaryArrears::getArrearsAmount($employee->id, $this->year . '-' . $this->month);
-
-            // Get Petrol Allowance
-            $petrolAllowance = PetrolAllowance::getPetrolAllowanceAmount($employee->id, $this->year . '-' . $this->month);
-
-            // Calculate Gross Salary: Monthly Salary + Salary Arrears + Petrol Allowance
-            $grossSalary = $monthlySalary + $salaryArrears + $petrolAllowance;
-
-            // Calculate LOP deduction amount (LOP days * daily salary)
-            // Note: Set to 0 to avoid double deduction as monthlySalary is already pro-rated
-            $dailySalary = $standardMonthlyDays > 0 ? ($actualSalary / $standardMonthlyDays) : 0;
-            $lopDeductionAmount = 0;
-
-            // Professional Tax (PT) - ₹200 fixed for all employees
-            $professionalTax = 200;
-
-            // Get Other Deductions from other_deductions table
-            $otherDeductions = OtherDeduction::getDeductionAmount($employee->id, $this->year . '-' . $this->month);
-
-            // Calculate Net Amount Payable (Total Deductions): LOP deduction + PT + Salary Advance + Other Deductions
-            $netAmountPayable = $lopDeductionAmount + $professionalTax + $salaryAdvance + $otherDeductions;
-
-            // Calculate Final Salary: Gross Salary - Net Amount Payable
-            $finalPayableSalary = $grossSalary - $netAmountPayable;
+            $monthlyDays = $figures['total_days'];
+            $payableDays = $figures['payable_days'];
+            $totalLeave = $figures['leave_days'];
+            $actualSalary = $figures['gross_salary'];
+            $monthlySalary = $figures['gross_salary'];
+            $basicPay = $figures['basic'];
+            $hra = $figures['hra'];
+            $conveyanceAllowance = $figures['conveyance'];
+            $specialAllowance = $figures['special'];
+            $medicalAllowance = $figures['medical'];
+            $salaryArrears = $figures['arrears'];
+            $petrolAllowance = $figures['petrol'];
+            $grossSalary = $figures['gross_salary'] + $figures['arrears'] + $figures['petrol'];
+            $lopDays = $figures['absent_days'];
+            $lopDeductionAmount = $figures['absent_deduction'];
+            $professionalTax = $figures['pt'];
+            $salaryAdvance = $figures['loan'];
+            $otherDeductions = $figures['casual_leave_deduction'];
+            $netAmountPayable = $figures['total_deductions'];
+            $finalPayableSalary = $figures['net_salary'];
 
             // Status
             $status = SalaryProcessingStatus::getStatus($employee->id, $this->year, $this->month);
@@ -217,11 +153,11 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
             'Total Leave',
             'Actual Salary',
             'Monthly Salary',
-            'Basic Pay (41%)',
-            'HRA (25%)',
-            'Conveyance Allowance (21%)',
-            'Special Allowance (10%)',
-            'Medical Allowance (3%)',
+            'Basic Pay (45%)',
+            'HRA (18%)',
+            'Conveyance Allowance (3.72%)',
+            'Special Allowance (30.37%)',
+            'Medical Allowance (2.91%)',
             'Salary Arrears',
             'Petrol Allowance',
             'Gross Salary',
@@ -229,7 +165,7 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
             'LOP Deduction Amount',
             'Professional Tax (PT)',
             'Salary Advance',
-            'Other Deductions',
+            'Casual Leave Deduction',
             'Net Amount Payable',
             'Final Salary',
             'Status',

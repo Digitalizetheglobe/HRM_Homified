@@ -1390,6 +1390,187 @@ class PaySlipController extends Controller
     /**
      * Get salary processing data for selected month/year
      */
+    /**
+     * Same attendance, leave, and salary-split rules as payslip/pdf.blade.php
+     */
+    public function calculatePdfSalaryFigures($employee, $year, $month): array
+    {
+        $salaryMonth = sprintf('%04d-%02d', (int) $year, (int) $month);
+        $totalDays = (int) date('t', strtotime($salaryMonth . '-01')) ?: 30;
+        $weekOffDay = $employee->week_off_day ?? 'Sun';
+
+        $startDate = new \DateTime($salaryMonth . '-01');
+        $endDate = clone $startDate;
+        $endDate->modify('last day of this month');
+        $interval = new \DateInterval('P1D');
+        $period = new \DatePeriod($startDate, $interval, $endDate->modify('+1 day'));
+
+        $attendanceRecords = \DB::table('attendance_employees')
+            ->where('employee_id', $employee->id)
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->get();
+
+        $leaves = \DB::table('leaves')
+            ->join('leave_types', 'leaves.leave_type_id', '=', 'leave_types.id')
+            ->where('leaves.employee_id', $employee->id)
+            ->whereRaw('LOWER(leaves.status) = ?', ['approved'])
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('leaves.start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                    ->orWhereBetween('leaves.end_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                    ->orWhere(function ($q2) use ($startDate, $endDate) {
+                        $q2->where('leaves.start_date', '<=', $startDate->format('Y-m-d'))
+                            ->where('leaves.end_date', '>=', $endDate->format('Y-m-d'));
+                    });
+            })
+            ->select('leaves.*', 'leave_types.title as leave_type')
+            ->get();
+
+        $attendanceByDate = [];
+        foreach ($attendanceRecords as $r) {
+            $attendanceByDate[$r->date] = $r;
+        }
+
+        $isPresentRecord = function ($r) {
+            $status = strtolower(trim($r->status ?? ''));
+            $clockIn = $r->clock_in ?? null;
+            $isAbsent = ($status === 'absent');
+            $hasPunch = !empty($clockIn) && $clockIn !== '00:00:00';
+
+            return !$isAbsent && ($hasPunch || in_array($status, ['present', 'half day', 'single punch in', 'single_punch'], true));
+        };
+
+        $presentDays = 0;
+        foreach ($attendanceByDate as $r) {
+            if ($isPresentRecord($r)) {
+                $presentDays++;
+            }
+        }
+
+        $absentDays = 0;
+        $leaveDays = 0;
+        $weekOffDays = 0;
+        $casualLeaveDays = 0;
+        $unlimitedLeaveDays = 0;
+
+        foreach ($period as $date) {
+            $dayOfWeek = $date->format('D');
+            $dateStr = $date->format('Y-m-d');
+
+            if (strcasecmp($dayOfWeek, (string) $weekOffDay) === 0) {
+                $weekOffDays++;
+                continue;
+            }
+
+            $attended = isset($attendanceByDate[$dateStr]) && $isPresentRecord($attendanceByDate[$dateStr]);
+            if ($attended) {
+                continue;
+            }
+
+            $onLeave = false;
+            $leaveType = '';
+            foreach ($leaves as $leave) {
+                $leaveStart = new \DateTime($leave->start_date);
+                $leaveEnd = new \DateTime($leave->end_date);
+                $leavePeriod = new \DatePeriod($leaveStart, $interval, (clone $leaveEnd)->modify('+1 day'));
+                foreach ($leavePeriod as $leaveDay) {
+                    if ($leaveDay->format('Y-m-d') == $dateStr) {
+                        $onLeave = true;
+                        $leaveType = strtolower($leave->leave_type ?? '');
+                        break 2;
+                    }
+                }
+            }
+
+            if ($onLeave) {
+                if ($leaveType == 'unlimited leave') {
+                    $unlimitedLeaveDays++;
+                    $absentDays++;
+                } elseif ($leaveType == 'casual leave') {
+                    $casualLeaveDays++;
+                    $leaveDays++;
+                } elseif (!empty($leaveType)) {
+                    $leaveDays++;
+                } else {
+                    $absentDays++;
+                }
+            } else {
+                $absentDays++;
+            }
+        }
+
+        $payslip = PaySlip::where('employee_id', $employee->id)
+            ->where('salary_month', $salaryMonth)
+            ->first();
+
+        $grossSalary = is_numeric($employee->salary) ? (float) $employee->salary : 0;
+        if ($payslip && is_numeric($payslip->basic_salary) && (float) $payslip->basic_salary > 0) {
+            $grossSalary = (float) $payslip->basic_salary;
+        }
+
+        $basicComponent = $grossSalary * 0.45;
+        $hraComponent = $grossSalary * 0.18;
+        $conveyanceComponent = $grossSalary * 0.0372;
+        $medicalComponent = $grossSalary * 0.0291;
+        $specialComponent = $grossSalary * 0.3037;
+
+        $perDaySalary = $grossSalary > 0 ? ($grossSalary / 30) : 0;
+        $deductionForAbsent = (float) $absentDays * $perDaySalary;
+        $deductionForCasualLeave = (float) $casualLeaveDays * $perDaySalary;
+
+        $ptDeduction = 0;
+        $loanDeduction = 0;
+        if ($payslip) {
+            $ptDeduction = is_numeric($payslip->professional_tax ?? 0) ? (float) ($payslip->professional_tax ?? 0) : 0;
+            if (isset($payslip->loan)) {
+                if (is_string($payslip->loan) && str_starts_with($payslip->loan, '[')) {
+                    $loanArray = json_decode($payslip->loan, true);
+                    $loanDeduction = is_array($loanArray) ? array_sum($loanArray) : 0;
+                } else {
+                    $loanDeduction = is_numeric($payslip->loan) ? max(0, (float) $payslip->loan) : 0;
+                }
+            }
+        } else {
+            $loanDeduction = $this->getSalaryAdvance($employee->id, $year, $month);
+        }
+
+        $arrearsAmount = SalaryArrears::getArrearsAmount($employee->id, $salaryMonth);
+        $petrolAllowanceAmount = PetrolAllowance::getPetrolAllowanceAmount($employee->id, $salaryMonth);
+        if ($payslip) {
+            $arrearsAmount = isset($payslip->salary_arrears) ? (float) $payslip->salary_arrears : $arrearsAmount;
+            $petrolAllowanceAmount = isset($payslip->petrol_allowance) ? (float) $payslip->petrol_allowance : $petrolAllowanceAmount;
+        }
+
+        $totalDeductions = $deductionForAbsent + $deductionForCasualLeave + $ptDeduction + $loanDeduction;
+        $netSalary = $grossSalary + $arrearsAmount + $petrolAllowanceAmount - $totalDeductions;
+        $payableDays = $totalDays - $absentDays - $casualLeaveDays;
+
+        return [
+            'total_days' => $totalDays,
+            'present_days' => $presentDays,
+            'absent_days' => $absentDays,
+            'leave_days' => $leaveDays,
+            'casual_leave_days' => $casualLeaveDays,
+            'unlimited_leave_days' => $unlimitedLeaveDays,
+            'week_off_days' => $weekOffDays,
+            'payable_days' => $payableDays,
+            'gross_salary' => $grossSalary,
+            'basic' => $basicComponent,
+            'hra' => $hraComponent,
+            'conveyance' => $conveyanceComponent,
+            'medical' => $medicalComponent,
+            'special' => $specialComponent,
+            'per_day_salary' => $perDaySalary,
+            'absent_deduction' => $deductionForAbsent,
+            'casual_leave_deduction' => $deductionForCasualLeave,
+            'pt' => $ptDeduction,
+            'loan' => $loanDeduction,
+            'arrears' => $arrearsAmount,
+            'petrol' => $petrolAllowanceAmount,
+            'total_deductions' => $totalDeductions,
+            'net_salary' => $netSalary,
+        ];
+    }
+
     public function salaryProcessingSearch(Request $request)
     {
         $formate_month_year = $request->datePicker;
@@ -1455,137 +1636,32 @@ class PaySlipController extends Controller
                 ->exists();
 
             if ($terminationDate || $resignationDate) {
-                \Log::info('Employee excluded - terminated/resigned', [
-                    'employee_id' => $employee->id,
-                    'employee_name' => $employee->name,
-                    'terminated' => $terminationDate,
-                    'resigned' => $resignationDate
-                ]);
                 continue;
             }
 
-            // Calculate Monthly Days (considering joining/termination dates)
-            $startDate = Carbon::create($year, $month)->startOfMonth();
-            $endDate = Carbon::create($year, $month)->endOfMonth();
-            
-            // Handle null or empty company_doj
-            if (empty($employee->company_doj)) {
-                // If no joining date, assume employee was present for the entire month
-                $joiningDate = $startDate->copy();
-            } else {
-                try {
-                    // Try to parse the date - handle different formats
-                    $joiningDate = Carbon::parse($employee->company_doj);
-                    if ($joiningDate->gt($endDate)) {
-                        \Log::info('Employee excluded - joined after month', [
-                            'employee_id' => $employee->id,
-                            'employee_name' => $employee->name,
-                            'company_doj' => $employee->company_doj,
-                            'month_end' => $endDate->format('Y-m-d')
-                        ]);
-                        continue; // Employee joined after this month
-                    }
-                } catch (\Exception $e) {
-                    // If date parsing fails, log it and assume employee was present for entire month
-                    \Log::warning('Failed to parse company_doj', [
-                        'employee_id' => $employee->id,
-                        'employee_name' => $employee->name,
-                        'company_doj' => $employee->company_doj,
-                        'error' => $e->getMessage()
-                    ]);
-                    $joiningDate = $startDate->copy();
-                }
-            }
-            if ($joiningDate->gt($startDate)) {
-                $startDate = $joiningDate->copy();
-            }
+            $figures = $this->calculatePdfSalaryFigures($employee, $year, $month);
 
-            $termination = Termination::where('employee_id', $employee->id)
-                ->whereDate('termination_date', '>=', $startDate)
-                ->whereDate('termination_date', '<=', $endDate)
-                ->first();
+            $monthlyDays = $figures['total_days'];
+            $payableDays = $figures['payable_days'];
+            $lopDays = $figures['absent_days'];
+            $totalLeave = $figures['leave_days'];
+            $actualSalary = $figures['gross_salary'];
+            $monthlySalary = $figures['gross_salary'];
+            $basicPay = $figures['basic'];
+            $hra = $figures['hra'];
+            $conveyanceAllowance = $figures['conveyance'];
+            $specialAllowance = $figures['special'];
+            $medicalAllowance = $figures['medical'];
+            $salaryAdvance = $figures['loan'];
+            $salaryArrears = $figures['arrears'];
+            $petrolAllowance = $figures['petrol'];
+            $grossSalary = $figures['gross_salary'] + $figures['arrears'] + $figures['petrol'];
+            $lopDeductionAmount = $figures['absent_deduction'];
+            $professionalTax = $figures['pt'];
+            $otherDeductions = $figures['casual_leave_deduction'];
+            $netAmountPayable = $figures['total_deductions'];
+            $finalPayableSalary = $figures['net_salary'];
 
-            $resignation = Resignation::where('employee_id', $employee->id)
-                ->whereDate('resignation_date', '>=', $startDate)
-                ->whereDate('resignation_date', '<=', $endDate)
-                ->first();
-
-            if ($termination) {
-                $endDate = Carbon::parse($termination->termination_date);
-            } elseif ($resignation) {
-                $endDate = Carbon::parse($resignation->resignation_date);
-            }
-
-            $monthlyDays = $startDate->diffInDays($endDate) + 1;
-
-            // Calculate Payable Days (check for manually edited values from employee_payable_days table first)
-            $payableDays = $this->getFinalPayableDays($employee->id, $year, $month);
-
-            // Calculate LOP (Leave Without Pay) - if payable days were edited, adjust LOP accordingly
-            $customPayableDays = EmployeePayableDay::where('employee_id', $employee->id)
-                ->where('month', (int)$month)
-                ->where('year', (int)$year)
-                ->first();
-
-            if ($customPayableDays) {
-                $lopDays = max(0, $monthlyDays - $payableDays);
-            } else {
-                $lopDays = $this->calculateLOPDays($employee->id, $year, $month);
-            }
-
-            // Calculate Total Leave (only EL, SL, and CO - all other leaves are treated as LWP)
-            $totalLeave = $this->calculateTotalLeave($employee->id, $year, $month);
-
-            // Get Actual Salary
-            $actualSalary = $employee->salary ?? 0;
-
-            // Use Standard Monthly Days (30) for fair salary calculation across all months
-            // This ensures same payable days = same salary regardless of month length (28/29/30/31 days)
-            $standardMonthlyDays = 30;
-            
-            // Calculate Monthly Salary: Actual Salary × (Payable Days / Standard Monthly Days)
-            // This ensures fairness: working same days in any month = same salary
-            $monthlySalary = $standardMonthlyDays > 0 ? ($actualSalary * ($payableDays / $standardMonthlyDays)) : 0;
-
-            // Calculate Monthly Salary breakdown (percentages of Monthly Salary)
-            $basicPay = round($monthlySalary * 0.41, 2); // 41%
-            $hra = round($monthlySalary * 0.25, 2); // 25%
-            $conveyanceAllowance = round($monthlySalary * 0.21, 2); // 21%
-            $specialAllowance = round($monthlySalary * 0.10, 2); // 10%
-            $medicalAllowance = round($monthlySalary * 0.03, 2); // 3%
-
-            // Get Salary Advance (loan deductions for the selected month)
-            $salaryAdvance = $this->getSalaryAdvance($employee->id, $year, $month);
-
-            // Get Salary Arrears
-            $salaryArrears = SalaryArrears::getArrearsAmount($employee->id, $year . '-' . $month);
-
-            // Get Petrol Allowance
-            $petrolAllowance = PetrolAllowance::getPetrolAllowanceAmount($employee->id, $year . '-' . $month);
-
-            // Calculate Gross Salary: Monthly Salary + Salary Arrears + Petrol Allowance
-            $grossSalary = $monthlySalary + $salaryArrears + $petrolAllowance;
-
-            // Calculate LOP deduction amount (LOP days * daily salary)
-            // Note: Since monthlySalary is already pro-rated based on payableDays, 
-            // we set lopDeductionAmount to 0 to avoid double deduction.
-            // We still keep the lopDays count for display purposes.
-            $dailySalary = $standardMonthlyDays > 0 ? ($actualSalary / $standardMonthlyDays) : 0;
-            $lopDeductionAmount = 0; // Avoid double deduction as monthlySalary is already pro-rated
-
-            // Professional Tax (PT) - ₹200 fixed for all employees
-            $professionalTax = 200;
-
-            // Get Other Deductions from other_deductions table
-            $otherDeductions = OtherDeduction::getDeductionAmount($employee->id, $year . '-' . $month);
-
-            // Calculate Net Amount Payable (Total Deductions): LOP deduction + PT + Salary Advance + Other Deductions
-            $netAmountPayable = $lopDeductionAmount + $professionalTax + $salaryAdvance + $otherDeductions;
-
-            // Calculate Final Salary: Gross Salary - Net Amount Payable
-            $finalPayableSalary = $grossSalary - $netAmountPayable;
-
-            // Get status from database
             $status = SalaryProcessingStatus::getStatus($employee->id, $year, $month);
 
             $tmp = [];

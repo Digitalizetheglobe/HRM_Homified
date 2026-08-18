@@ -18,6 +18,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Utility;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use App\Models\DailyQuote;  
 use App\Models\Department; 
 use App\Models\Site;
@@ -70,7 +71,7 @@ class HomeController extends Controller
                     })
                     ->get();
                 
-                $employees = Employee::get();
+                $employees = collect();
                 $meetings = Meeting::orderBy('meetings.id', 'desc')
                         ->leftJoin('meeting_employees', 'meetings.id', '=', 'meeting_employees.meeting_id')
                         ->where('meeting_employees.employee_id', '=', $emp->id)
@@ -116,7 +117,9 @@ class HomeController extends Controller
                 $officeTime['endTime'] = Utility::getValByName('company_end_time');
                 
                 // Fetch a random daily quote
-                $quote = DailyQuote::inRandomOrder()->first();
+                $quote = Cache::remember('utility.daily_quote', 600, function () {
+                    return DailyQuote::inRandomOrder()->first();
+                });
 
                 $todos = ToDoList::where('user_id', Auth::id())
                 ->whereDate('created_at', Carbon::today()) // Filter by today's date
@@ -342,7 +345,9 @@ class HomeController extends Controller
 
                 $chartData = $this->getOrderChart(['duration' => 'week']);
                 // **Daily Quote Logic for Super Admin Dashboard**
-                $quote = DailyQuote::inRandomOrder()->first();
+                $quote = Cache::remember('utility.daily_quote', 600, function () {
+                    return DailyQuote::inRandomOrder()->first();
+                });
 
                 return view('dashboard.super_admin', compact('user', 'chartData', 'quote'));
 
@@ -396,8 +401,8 @@ class HomeController extends Controller
 
                 
 
-                $user      = User::where('type', '!=', 'employee')->where('created_by', '=', \Auth::user()->creatorId())->get();
-                $countUser = count($user);
+                $user      = User::where('type', '!=', 'employee')->where('created_by', '=', \Auth::user()->creatorId());
+                $countUser = $user->count();
                 $countTicket      = Ticket::where('created_by', '=', \Auth::user()->creatorId())->count();
                 $countOpenTicket  = Ticket::where('status', '=', 'open')->where('created_by', '=', \Auth::user()->creatorId())->count();
                 $countCloseTicket = Ticket::where('status', '=', 'close')->where('created_by', '=', \Auth::user()->creatorId())->count();
@@ -515,23 +520,15 @@ class HomeController extends Controller
                 
                 
 
-                // Get present employees for today
-                $presentEmployees = AttendanceEmployee::where('date', '=', $currentDate)
-                    ->whereNotNull('clock_in')
-                    ->where('clock_in', '!=', '00:00:00')
-                    ->get();
-
-                // Calculate the attendance percentage
-                $attendancePercentage = $totalEmployees > 0 ? (count($presentEmployees) / $totalEmployees) * 100 : 0;
-
-                // Get employees who are present and their clock-in time
-                // Note: Location is optional - show all employees with clock_in regardless of location
                 $presentEmployeesWithClockIn = AttendanceEmployee::where('date', '=', $currentDate)
                     ->whereNotNull('clock_in')
                     ->where('clock_in', '!=', '00:00:00')
                     ->with('employee')
-                    ->get()
-                    ->map(function ($attendance) {
+                    ->get();
+
+                $attendancePercentage = $totalEmployees > 0 ? ($presentEmployeesWithClockIn->count() / $totalEmployees) * 100 : 0;
+
+                $presentEmployeesWithClockIn = $presentEmployeesWithClockIn->map(function ($attendance) {
                         return [
                             'employee' => $attendance->employee,
                             'clock_in' => $attendance->clock_in,
@@ -569,17 +566,15 @@ class HomeController extends Controller
                     $storage_limit = 0;
                 } 
                  // **Daily Quote Logic for Other Users Dashboard**
-                 $quote = DailyQuote::inRandomOrder()->first();
+                 $quote = Cache::remember('utility.daily_quote', 600, function () {
+                    return DailyQuote::inRandomOrder()->first();
+                });
 
 
                  $totalDepartment = Department::where('created_by', '=', \Auth::user()->creatorId())->count();
 
                  $totalleaves = LeaveType::where('created_by', '=', \Auth::user()->creatorId())->count();
 
-                 $projects = Project::all(); // Gets all projects without any conditions
-
-                 // With this:
-                 // Get all projects
                  $projects = Project::where('created_by', '=', \Auth::user()->creatorId())->get();
                  
                  // Prepare employee data for projects (similar to ProjectController)
@@ -608,9 +603,9 @@ class HomeController extends Controller
                  $employees = Employee::with('user')->whereIn('id', $employeeIds)->get()->keyBy('id');
                  
                  
-                 $totalProjects = Project::count();
+                 $totalProjects = Project::where('created_by', '=', \Auth::user()->creatorId())->count();
 
-                 $totalHolidays = Holiday::count();
+                 $totalHolidays = Holiday::where('created_by', '=', \Auth::user()->creatorId())->count();
 
                  $todos = ToDoList::where('user_id', Auth::id())
                  ->whereDate('created_at', Carbon::today()) // Filter by today's date

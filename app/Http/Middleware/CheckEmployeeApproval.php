@@ -20,7 +20,7 @@ class CheckEmployeeApproval
     public function handle(Request $request, Closure $next)
     {
         if (Auth::check() && Auth::user()->type == 'employee') {
-            $employee = Employee::where('user_id', Auth::id())->first();
+            $employee = Auth::user()->employee ?? Employee::where('user_id', Auth::id())->first();
 
             if ($employee && strtolower(trim($employee->approval_status ?? '')) !== 'approved') {
                 $allowedRoutes = [

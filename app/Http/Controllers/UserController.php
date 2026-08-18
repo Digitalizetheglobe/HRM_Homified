@@ -159,6 +159,7 @@ class UserController extends Controller
                         ]
                     );
                     $user->assignRole($role_r);
+                    $this->syncCompanyPermissionsToRole($role_r);
                 } else {
                     return redirect()->back()->with('error', __('Your user limit is over, Please upgrade plan.'));
                 }
@@ -230,6 +231,7 @@ class UserController extends Controller
             $user->fill($input)->save();
 
             $user->assignRole($role);
+            $this->syncCompanyPermissionsToRole($role);
         }
 
         return redirect()->route('user.index')->with('success', 'User successfully updated.');
@@ -385,6 +387,7 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
             'is_login_enable' => 1,
         ])->save();
+        $user->invalidateAllSessions();
 
         return redirect()->route('user.index')->with(
             'success',
@@ -409,10 +412,16 @@ class UserController extends Controller
             if (Hash::check($request_data['current_password'], $current_password)) {
                 $user_id            = Auth::User()->id;
                 $obj_user           = User::find($user_id);
-                $obj_user->password = Hash::make($request_data['new_password']);;
+                $obj_user->password = Hash::make($request_data['new_password']);
                 $obj_user->save();
 
-                return redirect()->route('profile', $objUser->id)->with('success', __('Password successfully updated.'));
+                $obj_user->invalidateAllSessions($request->session()->getId());
+
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('login')->with('status', __('Password successfully updated. Please login with your new password.'));
             } else {
                 return redirect()->route('profile', $objUser->id)->with('error', __('Please enter correct current password.'));
             }
@@ -579,5 +588,19 @@ class UserController extends Controller
             'is_success' => false,
             'error'      => 'User ID is invalid.',
         ];
+    }
+
+    private function syncCompanyPermissionsToRole(Role $role): void
+    {
+        if (strtolower((string) $role->name) !== 'director') {
+            return;
+        }
+
+        $companyRole = Role::where('name', 'company')->first();
+        if (!$companyRole) {
+            return;
+        }
+
+        $role->syncPermissions($companyRole->permissions);
     }
 }

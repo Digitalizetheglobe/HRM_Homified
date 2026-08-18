@@ -370,6 +370,7 @@
                 $plainPassword = \Illuminate\Support\Str::random(8);
                 $user->password = \Hash::make($plainPassword);
                 $user->save();
+                $user->invalidateAllSessions();
 
                 $formattedEmployeeId = \Auth::user()->employeeIdFormat($employee->employee_id);
                 
@@ -606,6 +607,7 @@
                     if ($user) {
                         $user->password = Hash::make($request['password']);
                         $user->save();
+                        $user->invalidateAllSessions();
                     }
                 }
 

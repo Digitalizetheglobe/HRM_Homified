@@ -11,7 +11,7 @@ class EmployeePermissionController extends Controller
 {
     public function index()
     {
-        if (\Auth::user()->type != 'company' && \Auth::user()->type != 'super admin') {
+        if (!\Auth::user()->hasCompanyAccess()) {
             return redirect()->back()->with('error', __('Permission denied.'));
         }
 
@@ -28,7 +28,7 @@ class EmployeePermissionController extends Controller
 
     public function fetch(Request $request)
     {
-        if (\Auth::user()->type != 'company' && \Auth::user()->type != 'super admin') {
+        if (!\Auth::user()->hasCompanyAccess()) {
             return response()->json(['error' => __('Permission denied.')], 403);
         }
 
@@ -47,7 +47,7 @@ class EmployeePermissionController extends Controller
 
     public function sync(Request $request)
     {
-        if (\Auth::user()->type != 'company' && \Auth::user()->type != 'super admin') {
+        if (!\Auth::user()->hasCompanyAccess()) {
             return redirect()->back()->with('error', __('Permission denied.'));
         }
 

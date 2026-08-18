@@ -121,7 +121,7 @@ try {
         $leaves = DB::table('leaves')
             ->join('leave_types', 'leaves.leave_type_id', '=', 'leave_types.id')
             ->where('leaves.employee_id', $employee->id)
-            ->where('leaves.status', 'Approved')
+            ->whereRaw('LOWER(leaves.status) = ?', ['approved'])
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->whereBetween('leaves.start_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
                   ->orWhereBetween('leaves.end_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
