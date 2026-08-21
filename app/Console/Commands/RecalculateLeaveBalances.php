@@ -10,7 +10,7 @@ use Carbon\Carbon;
 class RecalculateLeaveBalances extends Command
 {
     protected $signature = 'leaves:recalculate-balances';
-    protected $description = 'Recalculate leave balances based on the 30-day eligibility rule from joining date';
+    protected $description = 'Recalculate leave balances: paid leave starts 6 months after joining';
 
     public function handle()
     {
@@ -20,8 +20,11 @@ class RecalculateLeaveBalances extends Command
         $updatedCount = 0;
         
         foreach ($employees as $employee) {
-            $eligibilityDate = Carbon::parse($employee->company_doj)->addDays(30);
-            $eligibilityMonthStart = Carbon::create($eligibilityDate->year, $eligibilityDate->month, 1);
+            $eligibilityDate = $employee->leaveEligibleFrom();
+            if (!$eligibilityDate) {
+                continue;
+            }
+            $eligibilityMonthStart = $eligibilityDate->copy()->startOfMonth();
             
             // Get distinct leave type IDs for this employee
             $leaveTypeIds = EmployeeLeaveBalance::where('employee_id', $employee->id)

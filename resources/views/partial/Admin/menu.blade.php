@@ -337,7 +337,10 @@
             <!-- Employee Payroll section removed to rely on Spatie permissions block -->
                          <!-- Admin Payroll -->
             @if (Gate::check('payroll.salary.view.own') || Gate::check('payroll.salary.view.all') || 
-                 Gate::check('payroll.payslip.view.own') || Gate::check('payroll.payslip.view.all'))
+                 Gate::check('payroll.payslip.view.own') || Gate::check('payroll.payslip.view.all') ||
+                 Gate::check('payroll.salary_arrears.view.all') || Gate::check('payroll.other_deduction.view.all') ||
+                 Gate::check('payroll.petrol_allowance.view.all') || Gate::check('payroll.salary_processing.view.all') ||
+                 \Auth::user()->hasCompanyAccess())
                 <li class="dash-item dash-hasmenu {{ Request::segment(1) == 'setsalary' ? 'dash-trigger active' : '' }}">
                     <a href="#!" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                         <span class="dash-micon shadow-none" style="background: none;">
@@ -377,7 +380,7 @@
                             </li>
                         @endif
                         
-                        <!-- @if (Gate::check('payroll.salary_arrears.view.all') || \Auth::user()->hasCompanyAccess())
+                        @if (Gate::check('payroll.salary_arrears.view.all') || \Auth::user()->hasCompanyAccess())
                             <li class="dash-item {{ Request::segment(1) == 'salary-arrears' ? 'active' : '' }}">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('salary-arrears.index') }}">
                                     {{ __('Salary Arrears') }}
@@ -397,7 +400,7 @@
                                     {{ __('Petrol Allowance') }}
                                 </a>
                             </li>
-                        @endif -->
+                        @endif
                         
                         <!-- @if(Gate::check('payroll.payable_days.view.all'))
                             <li class="dash-item {{ Request::segment(1) == 'payable-days' ? 'active' : '' }}">

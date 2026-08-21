@@ -31,6 +31,7 @@ class LeaveController extends Controller
         if (\Auth::user()->type == 'company' || \Auth::user()->can('leave.manage.view.all') || \Auth::user()->type == 'employee') {
             $leaveBalances = [];
             $compOffBalance = 0;
+            $leaveEligibleFromDate = null;
             
             if (\Auth::user()->type == 'employee' && (!\Auth::user()->can('leave.manage.view.all') || request()->has('own'))) {
                 $user     = \Auth::user();
@@ -43,14 +44,23 @@ class LeaveController extends Controller
                     
                     // Get Earned Leave and Sick Leave balances
                     $now = now();
-                    $isEligible = true;
-                    if ($employee->company_doj) {
-                        $joiningDate = \Carbon\Carbon::parse($employee->company_doj);
-                        if ($joiningDate->diffInDays($now) < 30) {
-                            $isEligible = false;
-                        }
-                    }
+                    $isEligible = $employee->isEligibleForPaidLeave($now);
+                    $leaveEligibleFromDate = $employee->leaveEligibleFrom();
 
+                    if (!$isEligible) {
+                        $leaveBalances['earned_leave'] = [
+                            'allocated' => 0,
+                            'used' => 0,
+                            'carry_forward' => 0,
+                            'available' => 0,
+                        ];
+                        $leaveBalances['sick_leave'] = [
+                            'allocated' => 0,
+                            'used' => 0,
+                            'carry_forward' => 0,
+                            'available' => 0,
+                        ];
+                    } else {
                     $earnedLeaveType = LeaveType::where('title', 'Earned Leave')
                         ->where('created_by', \Auth::user()->creatorId())
                         ->first();
@@ -125,6 +135,7 @@ class LeaveController extends Controller
                             'available' => $isEligible ? 0.5 : 0.0,
                         ];
                     }
+                    }
                 }
             } else {
                 // Filter leaves based on user type
@@ -169,7 +180,8 @@ class LeaveController extends Controller
 
             // Ensure $isEligible is defined even if not an employee
             if (!isset($isEligible)) { $isEligible = true; }
-            return view('leave.index', compact('leaves', 'leaveBalances', 'compOffBalance', 'isEligible'));
+            if (!isset($leaveEligibleFromDate)) { $leaveEligibleFromDate = null; }
+            return view('leave.index', compact('leaves', 'leaveBalances', 'compOffBalance', 'isEligible', 'leaveEligibleFromDate'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }
@@ -232,8 +244,16 @@ class LeaveController extends Controller
         if ($compOffLeaveType) {
             $compOffLeaveTypeId = $compOffLeaveType->id;
         }
+
+        $isEligibleForPaidLeave = true;
+        $leaveEligibleFromDate = null;
+        if (Auth::user()->type == 'employee' && (!Auth::user()->can('leave.manage.create.all') || request()->has('own'))) {
+            $currentEmployee = Employee::where('user_id', Auth::user()->id)->first();
+            $isEligibleForPaidLeave = $currentEmployee ? $currentEmployee->isEligibleForPaidLeave() : true;
+            $leaveEligibleFromDate = $currentEmployee ? $currentEmployee->leaveEligibleFrom() : null;
+        }
         
-        return view('leave.create', compact('employees', 'leavetypes', 'compOffBalance', 'compOffLeaveTypeId', 'employeeId'));
+        return view('leave.create', compact('employees', 'leavetypes', 'compOffBalance', 'compOffLeaveTypeId', 'employeeId', 'isEligibleForPaidLeave', 'leaveEligibleFromDate'));
     } else {
         return response()->json(['error' => __('Permission denied.')], 401);
     }
@@ -380,6 +400,17 @@ class LeaveController extends Controller
                 $endDate = new \DateTime($request->end_date);
                 $endDate->modify('+1 day'); // Include end date in calculation
                 $total_leave_days = $startDate->diff($endDate)->days;
+            }
+        }
+
+        // First month after joining: no Earned/Sick (or other paid) leave. LWP and Comp-Off remain allowed.
+        if (!$isCompOff && !$isCasualLeave) {
+            $leaveEmployee = Employee::find($request->employee_id);
+            $leaveStartDate = $request->start_date ?: now();
+            if ($leaveEmployee && !$leaveEmployee->isEligibleForPaidLeave($leaveStartDate)) {
+                $from = $leaveEmployee->leaveEligibleFrom();
+                $fromStr = $from ? $from->format('d M Y') : '';
+                return redirect()->back()->with('error', __('Paid leave starts after 6 months from joining. You can apply Earned/Sick Leave from :date. Until then you may apply Leave Without Pay.', ['date' => $fromStr]));
             }
         }
 
@@ -655,6 +686,13 @@ class LeaveController extends Controller
 
                 $isCompOff = $leave_type && $leave_type->title === 'Comp-Off';
                 $isCasualLeave = $leave_type && ($leave_type->title === 'Leave Without Pay' || $leave_type->unlimited == 1);
+
+                $leaveEmployee = Employee::find($request->employee_id);
+                if ($leaveEmployee && !$isCompOff && !$isCasualLeave && !$leaveEmployee->isEligibleForPaidLeave($request->start_date)) {
+                    $from = $leaveEmployee->leaveEligibleFrom();
+                    $fromStr = $from ? $from->format('d M Y') : '';
+                    return redirect()->back()->with('error', __('Paid leave starts after 6 months from joining. You can apply from :date.', ['date' => $fromStr]));
+                }
                 
                 // Calculate total leave days - exclude Week Off for CO and LOP
                 if ($isCompOff || $isCasualLeave) {
@@ -880,12 +918,7 @@ class LeaveController extends Controller
                         $balance->save();
                     } else {
                         if ($leaveType) {
-                            $defaultAllocation = 0;
-                            if ($leaveType->title === 'Earned Leave') {
-                                $defaultAllocation = 1.0;
-                            } elseif ($leaveType->title === 'Sick Leave') {
-                                $defaultAllocation = 0.5;
-                            }
+                            $defaultAllocation = $this->defaultMonthlyAllocation($leave->employee_id, $leaveType, $now);
                             
                             EmployeeLeaveBalance::create([
                                 'employee_id' => $leave->employee_id,
@@ -968,12 +1001,7 @@ class LeaveController extends Controller
                         $balance->save();
                     } else {
                         if ($leaveType) {
-                            $defaultAllocation = 0;
-                            if ($leaveType->title === 'Earned Leave') {
-                                $defaultAllocation = 1.0;
-                            } elseif ($leaveType->title === 'Sick Leave') {
-                                $defaultAllocation = 0.5;
-                            }
+                            $defaultAllocation = $this->defaultMonthlyAllocation($leave->employee_id, $leaveType, $now);
                             
                             EmployeeLeaveBalance::create([
                                 'employee_id' => $leave->employee_id,
@@ -1083,12 +1111,7 @@ class LeaveController extends Controller
                         // Determine default allocation based on leave type
                         // Both Earned Leave and Sick Leave get 1.0 day per month
                         // Total: 2 days per month (1 Earned + 1 Sick)
-                        $defaultAllocation = 0;
-                        if ($leaveType->title === 'Earned Leave') {
-                            $defaultAllocation = 1.0;
-                        } elseif ($leaveType->title === 'Sick Leave') {
-                            $defaultAllocation = 1.0; // Changed from 0.5 to 1.0
-                        }
+                        $defaultAllocation = $this->defaultMonthlyAllocation($leave->employee_id, $leaveType, $now);
                         
                         EmployeeLeaveBalance::create([
                             'employee_id' => $leave->employee_id,
@@ -1583,12 +1606,8 @@ class LeaveController extends Controller
             return 1.0; // Default if leave type doesn't exist
         }
 
-        // Check eligibility (30 days from DOJ)
-        if (!empty($employee->company_doj)) {
-            $eligibilityDate = \Carbon\Carbon::parse($employee->company_doj)->addDays(30);
-            if ($now->lt($eligibilityDate)) {
-                return 0.0; // Not eligible yet
-            }
+        if (!$employee->isEligibleForPaidLeave($now)) {
+            return 0.0;
         }
 
         // Get current month balance record
@@ -1631,18 +1650,16 @@ class LeaveController extends Controller
     {
         $startMonth = 1;
 
-        // Check eligibility and determine start month
-        if (!empty($employee->company_doj)) {
-            $eligibilityDate = \Carbon\Carbon::parse($employee->company_doj)->addDays(30);
-            
-            if ($now->lt($eligibilityDate)) {
-                return; // Not eligible yet
-            }
+        if (!$employee->isEligibleForPaidLeave($now)) {
+            return;
+        }
 
+        $eligibilityDate = $employee->leaveEligibleFrom();
+        if ($eligibilityDate) {
             if ($eligibilityDate->year == $now->year) {
                 $startMonth = $eligibilityDate->month;
             } elseif ($eligibilityDate->year > $now->year) {
-                return; // Not eligible this year
+                return;
             }
         }
 
@@ -1695,5 +1712,23 @@ class LeaveController extends Controller
         $leave = LocalLeave::find($id);
         
         return view('leave.reason', compact('leave'));
+    }
+
+    private function defaultMonthlyAllocation($employeeId, $leaveType, $now): float
+    {
+        $employee = Employee::find($employeeId);
+        if (!$employee || !$leaveType || !$employee->isEligibleForPaidLeave($now)) {
+            return 0.0;
+        }
+
+        if ($leaveType->title === 'Earned Leave') {
+            return 1.0;
+        }
+
+        if ($leaveType->title === 'Sick Leave') {
+            return 0.5;
+        }
+
+        return 0.0;
     }
 }

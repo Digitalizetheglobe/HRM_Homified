@@ -31,10 +31,10 @@ class MarkAbsentees extends Command
                     'clock_out' => '00:00:00',
                     'created_by' => 1 // Or your admin user ID
                 ]);
-            } elseif ($attendance->clock_in != '00:00:00' && $attendance->clock_out == '00:00:00') {
-                // If only punched in but not out by end of day
-                $attendance->update([
-                    'status' => AttendanceEmployee::STATUS_SINGLE_PUNCH
+            } elseif ($attendance->clock_in != '00:00:00' && ($attendance->clock_out == '00:00:00' || empty($attendance->clock_out))) {
+                app(\App\Services\AttendanceRuleService::class)->applyAndSave($attendance, [
+                    'employee' => $employee,
+                    'force_reason' => AttendanceEmployee::REASON_HALF_DAY_MISSING_PUNCH_OUT,
                 ]);
             }
         }

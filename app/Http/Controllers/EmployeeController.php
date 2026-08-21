@@ -155,6 +155,7 @@
                     'branch_id' => 'required',
                     'department_id' => 'required',
                     'designation_id' => 'required',
+                    'shift' => 'nullable|in:first,second,third',
                     'document.*' => 'required',
                 ];
 
@@ -263,6 +264,7 @@
                     'designation_id' => $request['designation_id'],
                     'work_location' => $request['work_location'] ?? 'Pune',
                     'company_doj' => $request['company_doj'] ?? now(), // Default to current date
+                    'shift' => $request['shift'] ?? null,
                     'office_phone_one' => $request['office_phone_one'] ?? null,
                     'office_phone_two' => $request['office_phone_two'] ?? null,
                     'emergency_number' => $request['emergency_number'] ?? null,
@@ -282,53 +284,7 @@
                 // Load relationships for email
                 $employee->load(['branch', 'department', 'designation']);
 
-                // Automatically allocate initial leaves for the joining month
-                try {
-                    $joinDate = \Carbon\Carbon::parse($employee->company_doj ?? now());
-                    $creatorId = \Auth::user()->creatorId();
-                    
-                    $earnedLeaveType = \App\Models\LeaveType::firstOrCreate(
-                        ['title' => 'Earned Leave', 'created_by' => $creatorId],
-                        ['days' => 1.0]
-                    );
-                    
-                    $sickLeaveType = \App\Models\LeaveType::firstOrCreate(
-                        ['title' => 'Sick Leave', 'created_by' => $creatorId],
-                        ['days' => 1.0]
-                    );
-
-                    // Allocate Earned Leave
-                    \App\Models\EmployeeLeaveBalance::firstOrCreate(
-                        [
-                            'employee_id' => $employee->id,
-                            'leave_type_id' => $earnedLeaveType->id,
-                            'year' => $joinDate->year,
-                            'month' => $joinDate->month,
-                        ],
-                        [
-                            'allocated_days' => 1.0,
-                            'used_days' => 0,
-                            'carry_forward_days' => 0
-                        ]
-                    );
-
-                    // Allocate Sick Leave
-                    \App\Models\EmployeeLeaveBalance::firstOrCreate(
-                        [
-                            'employee_id' => $employee->id,
-                            'leave_type_id' => $sickLeaveType->id,
-                            'year' => $joinDate->year,
-                            'month' => $joinDate->month,
-                        ],
-                        [
-                            'allocated_days' => 1.0,
-                            'used_days' => 0,
-                            'carry_forward_days' => 0
-                        ]
-                    );
-                } catch (\Exception $e) {
-                    \Log::error('Failed to allocate initial leaves: ' . $e->getMessage());
-                }
+                // No paid leave for 6 months after joining. Allocation starts after that.
 
                 // Format employee ID for email
                 $formattedEmployeeId = \Auth::user()->employeeIdFormat($employee->employee_id);
@@ -478,6 +434,7 @@
                     'branch_id' => 'required',
                     'department_id' => 'required',
                     'designation_id' => 'required',
+                    'shift' => 'nullable|in:first,second,third',
                 ];
 
                 // Add email validation only for company users (employees can't change email)
@@ -560,6 +517,7 @@
                     'department_id' => $request['department_id'],
                     'designation_id' => $request['designation_id'],
                     'company_doj' => $request['company_doj'] ?? null,
+                    'shift' => $request['shift'] ?? null,
                     'office_phone_one' => $request['office_phone_one'] ?? null,
                     'office_phone_two' => $request['office_phone_two'] ?? null,
                     'emergency_number' => $request['emergency_number'] ?? null,

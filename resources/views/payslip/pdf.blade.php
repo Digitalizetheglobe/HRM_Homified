@@ -81,7 +81,7 @@ try {
             'error' => $e->getMessage(),
             'defaulting_to' => 'Sun'
         ]);
-        $weekOffDay = 'Sun'; // Default fallback
+        $weekOffDay = 'Sunday';
     }
 
     // Date period setup
@@ -156,25 +156,23 @@ try {
         foreach ($attendanceByDate as $dateKey => $r) {
             $status = strtolower(trim($r->status ?? ''));
             $clockIn = $r->clock_in ?? null;
-            // Count as present if not absent AND has a valid punch in (or explicit "present"/"half day"/"single punch")
             $isAbsent = ($status === 'absent');
             $hasPunch = !empty($clockIn) && $clockIn !== '00:00:00';
             if (!$isAbsent && ($hasPunch || in_array($status, ['present', 'half day', 'single punch in', 'single_punch'], true))) {
                 $presentDays++;
             }
         }
-        
+
+        $todayStr = date('Y-m-d');
+
         foreach ($period as $date) {
-            $dayOfWeek = $date->format('D');
+            $dayName = strtolower($date->format('l'));
+            $dayShort = strtolower($date->format('D'));
             $dateStr = $date->format('Y-m-d');
+            $weekOff = strtolower(trim((string) $weekOffDay));
+            $isWeekOffDay = $weekOff !== '' && ($weekOff === $dayName || $weekOff === $dayShort);
+            $isFutureDay = $dateStr > $todayStr;
             
-            // Skip week off days
-            if (strcasecmp($dayOfWeek, $weekOffDay) === 0) {
-                $weekOffDays++;
-                continue;
-            }
-            
-            // Check if employee actually attended on this date
             $attended = false;
             if (isset($attendanceByDate[$dateStr])) {
                 $r = $attendanceByDate[$dateStr];
@@ -183,6 +181,17 @@ try {
                 $isAbsent = ($status === 'absent');
                 $hasPunch = !empty($clockIn) && $clockIn !== '00:00:00';
                 $attended = !$isAbsent && ($hasPunch || in_array($status, ['present', 'half day', 'single punch in', 'single_punch'], true));
+            }
+
+            if ($isWeekOffDay) {
+                if (!$attended) {
+                    $weekOffDays++;
+                }
+                continue;
+            }
+
+            if ($isFutureDay) {
+                continue;
             }
             
             if (!$attended) {
@@ -213,7 +222,10 @@ try {
                 }
                 
                 if ($onLeave) {
-                    if ($leaveType == 'unlimited leave') {
+                    $isCompOffLeave = (strpos($leaveType, 'comp') !== false);
+                    if (!$employee->isEligibleForPaidLeave($dateStr) && !$isCompOffLeave) {
+                        $absentDays++; // Waiting period: no paid leave
+                    } elseif ($leaveType == 'unlimited leave') {
                         $unlimitedLeaveDays++;
                         $absentDays++; // Count unlimited leave as absent
                     } elseif ($leaveType == 'casual leave') {

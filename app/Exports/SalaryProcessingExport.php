@@ -12,7 +12,6 @@ use App\Models\EmployeeLoan;
 use App\Models\AttendanceEmployee;
 use App\Models\Leave as LocalLeave;
 use App\Models\OtherDeduction;
-use App\Models\SalaryProcessingStatus;
 use App\Models\EmployeePayableDay;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -88,55 +87,19 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
             }
 
             $figures = $this->paySlipController->calculatePdfSalaryFigures($employee, $this->year, $this->month);
-
-            $monthlyDays = $figures['total_days'];
-            $payableDays = $figures['payable_days'];
-            $totalLeave = $figures['leave_days'];
-            $actualSalary = $figures['gross_salary'];
-            $monthlySalary = $figures['gross_salary'];
-            $basicPay = $figures['basic'];
-            $hra = $figures['hra'];
-            $conveyanceAllowance = $figures['conveyance'];
-            $specialAllowance = $figures['special'];
-            $medicalAllowance = $figures['medical'];
-            $salaryArrears = $figures['arrears'];
-            $petrolAllowance = $figures['petrol'];
-            $grossSalary = $figures['gross_salary'] + $figures['arrears'] + $figures['petrol'];
-            $lopDays = $figures['absent_days'];
-            $lopDeductionAmount = $figures['absent_deduction'];
-            $professionalTax = $figures['pt'];
-            $salaryAdvance = $figures['loan'];
-            $otherDeductions = $figures['casual_leave_deduction'];
-            $netAmountPayable = $figures['total_deductions'];
-            $finalPayableSalary = $figures['net_salary'];
-
-            // Status
-            $status = SalaryProcessingStatus::getStatus($employee->id, $this->year, $this->month);
+            $leaveSummary = $this->paySlipController->getLeaveAndCompOffSummary($employee, $this->year, $this->month);
 
             $result[] = [
-                'employee_code' => \Auth::user()->employeeIdFormat($employee->employee_id),
                 'employee_name' => trim(($employee->name ?? '') . ' ' . ($employee->last_name ?? '')),
-                'monthly_days' => number_format($monthlyDays, 2),
-                'payable_days' => number_format($payableDays, 2),
-                'total_leave' => number_format($totalLeave, 2),
-                'actual_salary' => number_format($actualSalary, 2),
-                'monthly_salary' => number_format($monthlySalary, 2),
-                'basic_pay' => number_format($basicPay, 2),
-                'hra' => number_format($hra, 2),
-                'conveyance_allowance' => number_format($conveyanceAllowance, 2),
-                'special_allowance' => number_format($specialAllowance, 2),
-                'medical_allowance' => number_format($medicalAllowance, 2),
-                'salary_arrears' => number_format($salaryArrears, 2),
-                'petrol_allowance' => number_format($petrolAllowance, 2),
-                'gross_salary' => number_format($grossSalary, 2),
-                'lop_days' => number_format($lopDays, 2),
-                'lop_deduction_amount' => number_format($lopDeductionAmount, 2),
-                'professional_tax' => number_format($professionalTax, 2),
-                'salary_advance' => number_format($salaryAdvance, 2),
-                'other_deductions' => number_format($otherDeductions, 2),
-                'net_amount_payable' => number_format($netAmountPayable, 2),
-                'final_salary' => number_format($finalPayableSalary, 2),
-                'status' => $status,
+                'total_week_off' => number_format($figures['week_off_days'], 2),
+                'total_absent' => number_format($figures['absent_days'], 2),
+                'total_present_days' => number_format($figures['present_days'], 2),
+                'total_paid_leave' => number_format($figures['paid_leave_days'], 2),
+                'total_leave_taken' => number_format($figures['total_leave_taken'], 2),
+                'total_remaining_leave' => number_format($leaveSummary['remaining_leave'], 2),
+                'total_comp_off_earned' => number_format($leaveSummary['comp_off_earned'], 2),
+                'total_comp_off_used' => number_format($leaveSummary['comp_off_used'], 2),
+                'total_remaining_comp_off' => number_format($leaveSummary['comp_off_remaining'], 2),
             ];
         }
 
@@ -146,29 +109,16 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
     public function headings(): array
     {
         return [
-            'Employee Code',
             'Employee Name',
-            'Monthly Days',
-            'Payable Days',
-            'Total Leave',
-            'Actual Salary',
-            'Monthly Salary',
-            'Basic Pay (45%)',
-            'HRA (18%)',
-            'Conveyance Allowance (3.72%)',
-            'Special Allowance (30.37%)',
-            'Medical Allowance (2.91%)',
-            'Salary Arrears',
-            'Petrol Allowance',
-            'Gross Salary',
-            'LOP Days',
-            'LOP Deduction Amount',
-            'Professional Tax (PT)',
-            'Salary Advance',
-            'Casual Leave Deduction',
-            'Net Amount Payable',
-            'Final Salary',
-            'Status',
+            'Total Week Off',
+            'Total Absent',
+            'Total Present Days',
+            'Total Paid Leave',
+            'Total Leave Taken',
+            'Total Remaining Leave',
+            'Total Comp Off Earned',
+            'Total Comp Off Used',
+            'Total Remaining Comp Off',
         ];
     }
 
@@ -181,29 +131,16 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
     public function columnWidths(): array
     {
         return [
-            'A' => 15, // Employee Code
-            'B' => 25, // Employee Name
-            'C' => 12, // Monthly Days
-            'D' => 12, // Payable Days
-            'E' => 12, // Total Leave
-            'F' => 15, // Actual Salary
-            'G' => 15, // Monthly Salary
-            'H' => 15, // Basic Pay
-            'I' => 12, // HRA
-            'J' => 20, // Conveyance Allowance
-            'K' => 18, // Special Allowance
-            'L' => 15, // Medical Allowance
-            'M' => 15, // Salary Arrears
-            'N' => 18, // Petrol Allowance
-            'O' => 15, // Gross Salary
-            'P' => 12, // LOP Days
-            'Q' => 18, // LOP Deduction Amount
-            'R' => 18, // Professional Tax
-            'S' => 15, // Salary Advance
-            'T' => 18, // Other Deductions
-            'U' => 18, // Net Amount Payable
-            'V' => 15, // Final Salary
-            'W' => 12, // Status
+            'A' => 25, // Employee Name
+            'B' => 16, // Total Week Off
+            'C' => 14, // Total Absent
+            'D' => 20, // Total Present Days
+            'E' => 18, // Total Paid Leave
+            'F' => 18, // Total Leave Taken
+            'G' => 22, // Total Remaining Leave
+            'H' => 22, // Total Comp Off Earned
+            'I' => 20, // Total Comp Off Used
+            'J' => 24, // Total Remaining Comp Off
         ];
     }
 
@@ -248,35 +185,9 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
                 ],
             ],
             // Number columns (right align)
-            'C2:V' . $lastRow => [
+            'B2:J' . $lastRow => [
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_RIGHT,
-                ],
-            ],
-            // Monthly Salary, Gross Salary, Net Amount Payable, and Final Salary columns - bold
-            'G2:G' . $lastRow => [
-                'font' => [
-                    'bold' => true,
-                ],
-            ],
-            'O2:O' . $lastRow => [
-                'font' => [
-                    'bold' => true,
-                ],
-            ],
-            'U2:U' . $lastRow => [
-                'font' => [
-                    'bold' => true,
-                ],
-            ],
-            'V2:V' . $lastRow => [
-                'font' => [
-                    'bold' => true,
-                    'size' => 11,
-                ],
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'E8F5E9'], // Light green background
                 ],
             ],
         ];

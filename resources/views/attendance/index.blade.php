@@ -457,8 +457,10 @@
                                         @endif
                                         <td class="text-start">{{ \Auth::user()->dateFormat($attendance->date) }}</td>
                                         <td class="text-start">
-                                            @if(($attendance->clock_out == '00:00:00' || empty($attendance->clock_out)) && !empty($attendance->clock_in) && $attendance->clock_in != '00:00:00')
+                                            @if(($attendance->clock_out == '00:00:00' || empty($attendance->clock_out)) && !empty($attendance->clock_in) && $attendance->clock_in != '00:00:00' && empty($attendance->status_label))
                                                 <span class="badge bg-info">{{ __('Single Punch In') }}</span>
+                                            @elseif(!empty($attendance->status_label))
+                                                {{ $attendance->status_label }}
                                             @else
                                                 {{ $attendance->status }}
                                             @endif
@@ -467,7 +469,7 @@
                                         </td>
                                         <td class="text-start">
                                             @if($attendance->late != '00:00:00')
-                                                <span class="badge bg-danger">{{ $attendance->late }} {{ __('Late') }}</span>
+                                                <span class="badge bg-danger">{{ $attendance->late }} {{ !empty($attendance->late_cycle_number) && $attendance->late_cycle_number < 4 ? __('Late Mark') . ' ' . $attendance->late_cycle_number : __('Late') }}</span>
                                             @else
                                                 -
                                             @endif

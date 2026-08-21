@@ -66,31 +66,12 @@ class PolicyEvaluationService
     }
 
     /**
-     * Evaluate Late Mark Policy.
-     * Rule: 15-min grace period. Every 3 late marks = 0.5 day deduction.
-     *
-     * @param \Illuminate\Support\Collection|array $attendanceRecords The array of attendance records for the month
-     * @return float The total LOP days to deduct for late marks
+     * Late-mark half days are applied on the attendance day (4th late in a cycle).
+     * Extra payroll deduction is not applied here to avoid double counting.
      */
     public static function evaluateLateMarkDeduction($attendanceRecords)
     {
-        $lateCount = 0;
-        
-        foreach ($attendanceRecords as $attendance) {
-            if (!empty($attendance->late)) {
-                $lateParts = explode(':', $attendance->late);
-                if (count($lateParts) == 3) {
-                    $lateMinutes = (intval($lateParts[0]) * 60) + intval($lateParts[1]);
-                    // If late by more than 15 minutes
-                    if ($lateMinutes > 15) {
-                        $lateCount++;
-                    }
-                }
-            }
-        }
-
-        // 0.5 day deduction for every 3 late marks
-        return floor($lateCount / 3) * 0.5;
+        return 0;
     }
 
     /**

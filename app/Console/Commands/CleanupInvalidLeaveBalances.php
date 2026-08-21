@@ -10,7 +10,7 @@ use Carbon\Carbon;
 class CleanupInvalidLeaveBalances extends Command
 {
     protected $signature = 'leaves:cleanup-invalid-balances';
-    protected $description = 'Cleanup leave balances assigned before the 30-day eligibility period';
+    protected $description = 'Cleanup leave balances assigned before the 6-month paid-leave waiting period';
 
     public function handle()
     {
@@ -21,9 +21,12 @@ class CleanupInvalidLeaveBalances extends Command
         $updatedCount = 0;
         
         foreach ($employees as $employee) {
-            $eligibilityDate = Carbon::parse($employee->company_doj)->addDays(30);
-            
-            // Find all balances where the month/year is BEFORE the eligibility month/year
+            $eligibilityDate = $employee->leaveEligibleFrom();
+            if (!$eligibilityDate) {
+                continue;
+            }
+
+            // Find all balances where the month/year is BEFORE the 6-month eligibility date
             $invalidBalances = EmployeeLeaveBalance::where('employee_id', $employee->id)
                 ->where(function($query) use ($eligibilityDate) {
                     $query->where('year', '<', $eligibilityDate->year)

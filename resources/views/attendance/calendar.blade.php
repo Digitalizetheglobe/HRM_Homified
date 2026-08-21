@@ -103,6 +103,7 @@
                         <div class="row text-center">
                             <div class="col-md-6">
                                 <h5>{{ $selectedEmployee->full_name }} - {{ __($months[$currentMonth]) }} {{ $currentYear }}</h5>
+                                <small class="text-muted">{{ __('Shift') }}: {{ $selectedEmployee->shiftLabel() }} ({{ __('15 min grace') }})</small>
                             </div>
                             <div class="col-md-6 mt-2">
                                 <div class="btn-group btn-group-sm">
@@ -119,12 +120,14 @@
                     <div class="card-body">
                         <div class="row mb-4">
                             <div class="col-md-12 d-flex flex-wrap gap-3">
-                                <div class="d-flex align-items-center"><span class="badge bg-success-light me-2 border border-success" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Present') }}</div>
+                                <div class="d-flex align-items-center"><span class="badge bg-success-light me-2 border border-success" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('On Time / Present') }}</div>
+                                <div class="d-flex align-items-center"><span class="badge bg-warning-light me-2 border border-warning" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Late Mark') }}</div>
+                                <div class="d-flex align-items-center"><span class="badge bg-orange-light me-2 border" style="width:15px;height:15px;display:inline-block;border-radius:3px;border-color:#fd7e14 !important;">&nbsp;</span> {{ __('Half Day – Due to Late Mark') }}</div>
+                                <div class="d-flex align-items-center"><span class="badge bg-primary-light me-2 border border-primary" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Half Day – Insufficient Hours') }}</div>
+                                <div class="d-flex align-items-center"><span class="badge bg-info-light me-2 border border-info" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Half Day – Missing Punch-Out') }}</div>
                                 <div class="d-flex align-items-center"><span class="badge bg-danger-light me-2 border border-danger" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Absent') }}</div>
-                                <div class="d-flex align-items-center"><span class="badge bg-warning-light me-2 border border-warning" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Late') }}</div>
                                 <div class="d-flex align-items-center"><span class="badge bg-pink-light me-2 border" style="width:15px;height:15px;display:inline-block;border-radius:3px;border-color:#e83e8c !important;">&nbsp;</span> {{ __('Leave') }}</div>
                                 <div class="d-flex align-items-center"><span class="badge bg-secondary-light me-2 border border-secondary" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Week Off') }}</div>
-                                <div class="d-flex align-items-center"><span class="badge bg-primary-light me-2 border border-primary" style="width:15px;height:15px;display:inline-block;border-radius:3px;border-color:#5c59e8 !important;">&nbsp;</span> {{ __('Half Day / Single Punch') }}</div>
                             </div>
                         </div>
 
@@ -192,18 +195,30 @@
                                         $title = '';
                                         
                                         if($dayData) {
+                                            $reason = $dayData['status_reason'] ?? null;
+                                            $statusLabel = $dayData['status_label'] ?? '';
                                             switch($dayData['type']) {
-                                                case 'present': 
-                                                    $class = $dayData['is_late'] ? 'bg-warning-light' : 'bg-success-light';
-                                                    $title = __('Clock In: ') . $dayData['clock_in'] . "\n" . __('Clock Out: ') . $dayData['clock_out'];
+                                                case 'present':
+                                                    $class = 'bg-success-light';
+                                                    $title = ($statusLabel ?: __('On Time')) . "\n" . __('Clock In: ') . ($dayData['clock_in'] ?? '') . "\n" . __('Clock Out: ') . ($dayData['clock_out'] ?? '');
+                                                    break;
+                                                case 'late':
+                                                    $class = 'bg-warning-light';
+                                                    $title = ($statusLabel ?: __('Late Mark')) . "\n" . __('Clock In: ') . ($dayData['clock_in'] ?? '') . "\n" . __('Clock Out: ') . ($dayData['clock_out'] ?? '');
                                                     break;
                                                 case 'half_day':
-                                                    $class = 'bg-primary-light';
-                                                    $title = __('Half Day: ') . $dayData['clock_in'] . ' - ' . $dayData['clock_out'];
+                                                    if ($reason === 'half_day_late_mark') {
+                                                        $class = 'bg-orange-light';
+                                                    } elseif ($reason === 'half_day_missing_punch_out') {
+                                                        $class = 'bg-info-light';
+                                                    } else {
+                                                        $class = 'bg-primary-light';
+                                                    }
+                                                    $title = ($statusLabel ?: __('Half Day')) . "\n" . __('Clock In: ') . ($dayData['clock_in'] ?? '') . "\n" . __('Clock Out: ') . ($dayData['clock_out'] ?? '');
                                                     break;
                                                 case 'single_punch':
-                                                    $class = 'bg-primary-light';
-                                                    $title = __('Single Punch In: ') . $dayData['clock_in'];
+                                                    $class = !empty($dayData['is_late']) ? 'bg-warning-light' : 'bg-success-light';
+                                                    $title = ($statusLabel ?: __('Single Punch In')) . "\n" . __('Clock In: ') . ($dayData['clock_in'] ?? '');
                                                     break;
                                                 case 'leave':
                                                     $class = 'bg-pink-light';
@@ -240,7 +255,7 @@
                                             );
                                         }
                                     @endphp
-                                    <div class="calendar-day {{ $class }} {{ $isToday ? 'today' : '' }} {{ $editClass }}" {!! $dataAttrs !!}>
+                                    <div class="calendar-day {{ $class }} {{ $isToday ? 'today' : '' }} {{ $editClass }}" title="{{ $title }}" {!! $dataAttrs !!}>
                                         <div class="day-number">{{ $day }}</div>
                                         @if($dayData && !empty($dayData['earned_comp_off']))
                                             @if(!empty($dayData['used_comp_off']))
@@ -255,10 +270,11 @@
                                         @endif
                                         @if($dayData)
                                             <div class="day-info">
-                                                @if($dayData['type'] == 'present' || $dayData['type'] == 'half_day' || $dayData['type'] == 'single_punch')
-                                                    <small class="d-block text-center">{{ $dayData['clock_in'] != '00:00:00' ? date('H:i', strtotime($dayData['clock_in'])) : '' }}</small>
-                                                    @if($dayData['type'] == 'present' || $dayData['type'] == 'half_day')
-                                                        <small class="d-block text-center">{{ $dayData['clock_out'] != '00:00:00' ? date('H:i', strtotime($dayData['clock_out'])) : '' }}</small>
+                                                @if($dayData['type'] == 'present' || $dayData['type'] == 'late' || $dayData['type'] == 'half_day' || $dayData['type'] == 'single_punch')
+                                                    <small class="d-block text-center fw-semibold">{{ $dayData['status_label'] ?? '' }}</small>
+                                                    <small class="d-block text-center">{{ !empty($dayData['clock_in']) && $dayData['clock_in'] != '00:00:00' ? date('H:i', strtotime($dayData['clock_in'])) : '' }}</small>
+                                                    @if(($dayData['type'] == 'present' || $dayData['type'] == 'late' || $dayData['type'] == 'half_day') && !empty($dayData['clock_out']) && $dayData['clock_out'] != '00:00:00')
+                                                        <small class="d-block text-center">{{ date('H:i', strtotime($dayData['clock_out'])) }}</small>
                                                     @endif
                                                 @elseif($dayData['type'] == 'leave')
                                                     <small class="d-block text-center text-truncate">{{ $dayData['leave_type'] }}</small>
@@ -402,6 +418,7 @@
         .bg-pink-light { background-color: rgba(232, 62, 140, 0.15) !important; color: #e83e8c; }
         .bg-secondary-light { background-color: rgba(108, 117, 125, 0.15) !important; color: #545b62; }
         .bg-primary-light { background-color: rgba(92, 89, 232, 0.15) !important; color: #5c59e8; }
+        .bg-orange-light { background-color: rgba(253, 126, 20, 0.18) !important; color: #c05621; }
         
         .day-info {
             font-size: 0.8rem;

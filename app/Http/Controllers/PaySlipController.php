@@ -1058,7 +1058,7 @@ class PaySlipController extends Controller
                     if ($leaveCode === 'SL') {
                         $statusCodes[$date] = 'SL';
                     } else {
-                        $statusCodes[$date] = 'SP';
+                        $statusCodes[$date] = $isToday ? 'SP' : 'HD';
                     }
                     continue;
                 }
@@ -1067,7 +1067,9 @@ class PaySlipController extends Controller
                     $statusCodes[$date] = 'SL';
                 } else {
                     $status = strtolower(trim((string) ($att['status'] ?? '')));
-                    if ($status === 'present') {
+                    if ($status === 'half day') {
+                        $statusCodes[$date] = 'HD';
+                    } elseif ($status === 'present') {
                         $statusCodes[$date] = 'P';
                     } elseif ($status === 'absent') {
                         $statusCodes[$date] = 'LOP';
@@ -1140,6 +1142,9 @@ class PaySlipController extends Controller
                 case 'P':
                 case 'SP':
                     $presentDays++;
+                    break;
+                case 'HD':
+                    $presentDays += 0.5;
                     break;
                 case 'EL':
                     $elDays++;
@@ -1397,7 +1402,7 @@ class PaySlipController extends Controller
     {
         $salaryMonth = sprintf('%04d-%02d', (int) $year, (int) $month);
         $totalDays = (int) date('t', strtotime($salaryMonth . '-01')) ?: 30;
-        $weekOffDay = $employee->week_off_day ?? 'Sun';
+        $weekOffDay = $employee->week_off_day ?? 'Sunday';
 
         $startDate = new \DateTime($salaryMonth . '-01');
         $endDate = clone $startDate;
@@ -1440,29 +1445,38 @@ class PaySlipController extends Controller
         };
 
         $presentDays = 0;
-        foreach ($attendanceByDate as $r) {
-            if ($isPresentRecord($r)) {
-                $presentDays++;
-            }
-        }
-
         $absentDays = 0;
         $leaveDays = 0;
         $weekOffDays = 0;
         $casualLeaveDays = 0;
         $unlimitedLeaveDays = 0;
+        $paidLeaveDays = 0;
+        $totalLeaveTaken = 0;
+        $todayStr = date('Y-m-d');
 
         foreach ($period as $date) {
-            $dayOfWeek = $date->format('D');
             $dateStr = $date->format('Y-m-d');
+            $isFutureDay = $dateStr > $todayStr;
 
-            if (strcasecmp($dayOfWeek, (string) $weekOffDay) === 0) {
-                $weekOffDays++;
+            $attended = isset($attendanceByDate[$dateStr]) && $isPresentRecord($attendanceByDate[$dateStr]);
+
+            // Week off only if they did not work that day. Worked week-off counts as present (comp-off).
+            if ($this->isEmployeeWeekOff($date, $weekOffDay)) {
+                if ($attended) {
+                    $presentDays++;
+                } else {
+                    $weekOffDays++;
+                }
                 continue;
             }
 
-            $attended = isset($attendanceByDate[$dateStr]) && $isPresentRecord($attendanceByDate[$dateStr]);
+            // Upcoming days have no attendance yet — do not treat them as absent
+            if ($isFutureDay) {
+                continue;
+            }
+
             if ($attended) {
+                $presentDays++;
                 continue;
             }
 
@@ -1482,15 +1496,22 @@ class PaySlipController extends Controller
             }
 
             if ($onLeave) {
-                if ($leaveType == 'unlimited leave') {
+                $totalLeaveTaken++;
+                $isCompOffLeave = (strpos($leaveType, 'comp') !== false);
+
+                if (!$employee->isEligibleForPaidLeave($dateStr) && !$isCompOffLeave) {
+                    $absentDays++;
+                } elseif ($leaveType == 'unlimited leave' || $leaveType == 'leave without pay' || $leaveType == 'lwp') {
                     $unlimitedLeaveDays++;
                     $absentDays++;
                 } elseif ($leaveType == 'casual leave') {
                     $casualLeaveDays++;
                     $leaveDays++;
                 } elseif (!empty($leaveType)) {
+                    $paidLeaveDays++;
                     $leaveDays++;
                 } else {
+                    $totalLeaveTaken--;
                     $absentDays++;
                 }
             } else {
@@ -1552,6 +1573,8 @@ class PaySlipController extends Controller
             'casual_leave_days' => $casualLeaveDays,
             'unlimited_leave_days' => $unlimitedLeaveDays,
             'week_off_days' => $weekOffDays,
+            'paid_leave_days' => $paidLeaveDays,
+            'total_leave_taken' => $totalLeaveTaken,
             'payable_days' => $payableDays,
             'gross_salary' => $grossSalary,
             'basic' => $basicComponent,
@@ -1568,6 +1591,62 @@ class PaySlipController extends Controller
             'petrol' => $petrolAllowanceAmount,
             'total_deductions' => $totalDeductions,
             'net_salary' => $netSalary,
+        ];
+    }
+
+    /**
+     * Week off is stored as "Monday" (full name). Also accept "Mon".
+     */
+    private function isEmployeeWeekOff(\DateTimeInterface $date, $weekOffDay): bool
+    {
+        $weekOff = strtolower(trim((string) $weekOffDay));
+        if ($weekOff === '') {
+            return false;
+        }
+
+        return $weekOff === strtolower($date->format('l'))
+            || $weekOff === strtolower($date->format('D'));
+    }
+
+    public function getLeaveAndCompOffSummary($employee, $year, $month): array
+    {
+        $remainingLeave = 0;
+        $monthEnd = Carbon::create((int) $year, (int) $month)->endOfMonth();
+
+        if ($employee->isEligibleForPaidLeave($monthEnd)) {
+            foreach (['Earned Leave', 'Sick Leave'] as $title) {
+                $leaveType = \App\Models\LeaveType::where('title', $title)
+                    ->where('created_by', $employee->created_by)
+                    ->first();
+                if (!$leaveType) {
+                    continue;
+                }
+
+                $balance = \App\Models\EmployeeLeaveBalance::where('employee_id', $employee->id)
+                    ->where('leave_type_id', $leaveType->id)
+                    ->where('year', (int) $year)
+                    ->where('month', (int) $month)
+                    ->first();
+
+                if ($balance) {
+                    $remainingLeave += max(0, ($balance->allocated_days + $balance->carry_forward_days) - $balance->used_days);
+                }
+            }
+        }
+
+        $compOffEarned = (float) \DB::table('comp_off_leaves')->where('employees_id', $employee->id)->count();
+        $compOffUsed = (float) LocalLeave::where('employee_id', $employee->id)
+            ->whereRaw('LOWER(status) = ?', ['approved'])
+            ->whereHas('leaveType', function ($query) {
+                $query->where('title', 'Comp-Off');
+            })
+            ->sum('total_leave_days');
+
+        return [
+            'remaining_leave' => $remainingLeave,
+            'comp_off_earned' => $compOffEarned,
+            'comp_off_used' => $compOffUsed,
+            'comp_off_remaining' => max(0, $compOffEarned - $compOffUsed),
         ];
     }
 
@@ -1640,55 +1719,20 @@ class PaySlipController extends Controller
             }
 
             $figures = $this->calculatePdfSalaryFigures($employee, $year, $month);
-
-            $monthlyDays = $figures['total_days'];
-            $payableDays = $figures['payable_days'];
-            $lopDays = $figures['absent_days'];
-            $totalLeave = $figures['leave_days'];
-            $actualSalary = $figures['gross_salary'];
-            $monthlySalary = $figures['gross_salary'];
-            $basicPay = $figures['basic'];
-            $hra = $figures['hra'];
-            $conveyanceAllowance = $figures['conveyance'];
-            $specialAllowance = $figures['special'];
-            $medicalAllowance = $figures['medical'];
-            $salaryAdvance = $figures['loan'];
-            $salaryArrears = $figures['arrears'];
-            $petrolAllowance = $figures['petrol'];
-            $grossSalary = $figures['gross_salary'] + $figures['arrears'] + $figures['petrol'];
-            $lopDeductionAmount = $figures['absent_deduction'];
-            $professionalTax = $figures['pt'];
-            $otherDeductions = $figures['casual_leave_deduction'];
-            $netAmountPayable = $figures['total_deductions'];
-            $finalPayableSalary = $figures['net_salary'];
-
-            $status = SalaryProcessingStatus::getStatus($employee->id, $year, $month);
+            $leaveSummary = $this->getLeaveAndCompOffSummary($employee, $year, $month);
 
             $tmp = [];
             $tmp[] = $employee->id;
-            $tmp[] = \Auth::user()->employeeIdFormat($employee->employee_id);
             $tmp[] = trim(($employee->name ?? '') . ' ' . ($employee->last_name ?? ''));
-            $tmp[] = round($monthlyDays, 2);
-            $tmp[] = round($payableDays, 2);
-            $tmp[] = round($totalLeave, 2);
-            $tmp[] = round($actualSalary, 2);
-            $tmp[] = round($monthlySalary, 2);
-            $tmp[] = round($basicPay, 2);
-            $tmp[] = round($hra, 2);
-            $tmp[] = round($conveyanceAllowance, 2);
-            $tmp[] = round($specialAllowance, 2);
-            $tmp[] = round($medicalAllowance, 2);
-            $tmp[] = round($salaryArrears, 2);
-            $tmp[] = round($petrolAllowance, 2);
-            $tmp[] = round($grossSalary, 2);
-            $tmp[] = round($lopDays, 2);
-            $tmp[] = round($lopDeductionAmount, 2);
-            $tmp[] = round($professionalTax, 2);
-            $tmp[] = round($salaryAdvance, 2);
-            $tmp[] = round($otherDeductions, 2);
-            $tmp[] = round($netAmountPayable, 2);
-            $tmp[] = round($finalPayableSalary, 2);
-            $tmp[] = $status;
+            $tmp[] = round($figures['week_off_days'], 2);
+            $tmp[] = round($figures['absent_days'], 2);
+            $tmp[] = round($figures['present_days'], 2);
+            $tmp[] = round($figures['paid_leave_days'], 2);
+            $tmp[] = round($figures['total_leave_taken'], 2);
+            $tmp[] = round($leaveSummary['remaining_leave'], 2);
+            $tmp[] = round($leaveSummary['comp_off_earned'], 2);
+            $tmp[] = round($leaveSummary['comp_off_used'], 2);
+            $tmp[] = round($leaveSummary['comp_off_remaining'], 2);
             $tmp['url'] = route('employee.show', Crypt::encrypt($employee->id));
             $data[] = $tmp;
         }
@@ -1848,7 +1892,7 @@ class PaySlipController extends Controller
                     if ($leaveCode === 'SL') {
                         $statusCodes[$date] = 'SL';
                     } else {
-                        $statusCodes[$date] = 'SP';
+                        $statusCodes[$date] = $isToday ? 'SP' : 'HD';
                     }
                     continue;
                 }
@@ -1857,7 +1901,9 @@ class PaySlipController extends Controller
                     $statusCodes[$date] = 'SL';
                 } else {
                     $status = strtolower(trim((string) ($att['status'] ?? '')));
-                    if ($status === 'present') {
+                    if ($status === 'half day') {
+                        $statusCodes[$date] = 'HD';
+                    } elseif ($status === 'present') {
                         $statusCodes[$date] = 'P';
                     } elseif ($status === 'absent') {
                         $statusCodes[$date] = 'LOP';

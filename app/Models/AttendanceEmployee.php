@@ -13,6 +13,15 @@ class AttendanceEmployee extends Model
     const STATUS_SINGLE_PUNCH = 'Single Punch In';
     const REQUIRED_WORKING_HOURS = 5.0; // 5 hours in decimal
 
+    const REASON_ON_TIME = 'on_time';
+    const REASON_LATE_MARK = 'late_mark';
+    const REASON_HALF_DAY_LATE_MARK = 'half_day_late_mark';
+    const REASON_HALF_DAY_INSUFFICIENT_HOURS = 'half_day_insufficient_hours';
+    const REASON_HALF_DAY_MISSING_PUNCH_OUT = 'half_day_missing_punch_out';
+    const REASON_SINGLE_PUNCH = 'single_punch';
+    const REASON_ABSENT = 'absent';
+    const REASON_MANUAL = 'manual';
+
 
     protected $fillable = [
         'employee_id',
@@ -49,6 +58,8 @@ class AttendanceEmployee extends Model
         'clock_out_2_accuracy',
         'clock_out_2_location_captured_at',
         'missed_punchout_notified_at',
+        'status_reason',
+        'late_cycle_number',
     ];
 
     public function employees()

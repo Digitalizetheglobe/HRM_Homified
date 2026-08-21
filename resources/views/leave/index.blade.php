@@ -84,6 +84,20 @@
 @endphp
 
     @if(\Auth::user()->type == 'employee' && !$isHR && isset($leaveBalances))
+    @if(isset($isEligible) && !$isEligible)
+    <div class="alert alert-warning mb-3">
+        @php
+            $leaveFromLabel = !empty($leaveEligibleFromDate)
+                ? \Auth::user()->dateFormat(\Carbon\Carbon::parse($leaveEligibleFromDate)->toDateString())
+                : '';
+        @endphp
+        {{ __('Paid leave starts after 6 months from joining.') }}
+        @if($leaveFromLabel)
+            {{ __('Earned Leave and Sick Leave will be available from :date.', ['date' => $leaveFromLabel]) }}
+        @endif
+        {{ __('Until then you may apply Leave Without Pay.') }}
+    </div>
+    @endif
     <div class="row">
         <div class="col-xl-12">
             <div class="card">
@@ -106,8 +120,7 @@
                                     @php
                                         $earnedAvailable = $leaveBalances['earned_leave']['available'] ?? 0;
                                         
-                                        // If no balance exists, show default 1.0
-                                        if ($earnedAvailable == 0 && !isset($leaveBalances['earned_leave'])) {
+                                        if ($earnedAvailable == 0 && !isset($leaveBalances['earned_leave']) && (!isset($isEligible) || $isEligible)) {
                                             $earnedAvailable = 1.0;
                                         }
                                     @endphp
@@ -123,8 +136,7 @@
                                     @php
                                         $sickAvailable = $leaveBalances['sick_leave']['available'] ?? 0;
                                         
-                                        // If no balance exists, show default 0.5
-                                        if ($sickAvailable == 0 && !isset($leaveBalances['sick_leave'])) {
+                                        if ($sickAvailable == 0 && !isset($leaveBalances['sick_leave']) && (!isset($isEligible) || $isEligible)) {
                                             $sickAvailable = 0.5;
                                         }
                                     @endphp

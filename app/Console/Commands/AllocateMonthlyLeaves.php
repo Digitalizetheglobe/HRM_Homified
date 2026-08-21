@@ -32,12 +32,9 @@ class AllocateMonthlyLeaves extends Command
         $this->info("Processing {$employees->count()} employees...");
         
         foreach ($employees as $employee) {
-            // Check eligibility (30 days from DOJ)
-            if (!empty($employee->company_doj)) {
-                $eligibilityDate = Carbon::parse($employee->company_doj)->addDays(30);
-                if ($now->lt($eligibilityDate)) {
-                    continue; // Skip this employee, not eligible yet
-                }
+            // Paid leave starts 6 months after joining
+            if (!$employee->isEligibleForPaidLeaveAllocation($now)) {
+                continue;
             }
 
             // Get or create leave types for this employee's company

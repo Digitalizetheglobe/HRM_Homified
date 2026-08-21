@@ -163,6 +163,20 @@
         </div>
     </div>
 
+    @if(!$employee->isEligibleForPaidLeave() && $employee->leaveEligibleFrom())
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="alert alert-warning">
+                <i class="ti ti-calendar-off me-1"></i>
+                <strong>{{ __('Paid Leave') }}:</strong>
+                {{ __('Starts after 6 months from joining.') }}
+                {{ __('Earned Leave and Sick Leave will be available from :date.', ['date' => \Auth::user()->dateFormat($employee->leaveEligibleFrom()->toDateString())]) }}
+                {{ __('Until then Leave Without Pay can be applied.') }}
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="row">
         <div class="col-sm-12 col-md-6">
             <div class="card shadow-none border h-100">
@@ -250,6 +264,16 @@
                             <span class="info-row-label">{{ __('Date of Joining') }}</span>
                             <span class="info-row-value">{{ $employee->company_doj ? \Auth::user()->dateFormat($employee->company_doj) : __('Not Set') }}</span>
                         </div>
+                        <div class="col-md-6 border-bottom border-light pb-2">
+                            <span class="info-row-label">{{ __('Shift') }}</span>
+                            <span class="info-row-value">{{ $employee->shiftLabel() }}</span>
+                        </div>
+                        @if($employee->leaveEligibleFrom())
+                        <div class="col-md-6 border-bottom border-light pb-2">
+                            <span class="info-row-label">{{ __('Paid Leave Starts From') }}</span>
+                            <span class="info-row-value">{{ \Auth::user()->dateFormat($employee->leaveEligibleFrom()->toDateString()) }}</span>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>

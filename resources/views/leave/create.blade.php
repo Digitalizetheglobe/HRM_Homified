@@ -1,7 +1,8 @@
 @php
     $setting = App\Models\Utility::settings();
     $plan = Utility::getChatGPTSettings();
-    $compOffBalance = $compOffBalance ?? 0; // Default value if not defined
+    $isEligibleForPaidLeave = $isEligibleForPaidLeave ?? true;
+    $leaveEligibleFromDate = $leaveEligibleFromDate ?? null;
 @endphp
 {{ Form::open(['url' => 'leave', 'method' => 'post']) }}
 <div class="modal-body">
@@ -28,10 +29,12 @@
                 {{ Form::label('leave_type_select', __('Leave Type'), ['class' => 'col-form-label']) }}<span class="text-danger pl-1">*</span>
                 <select name="leave_type_select" id="leave_type_select" class="form-control select" required>
                     <option value="">{{ __('Select Leave Type') }}</option>
+                    @if($isEligibleForPaidLeave)
                     <optgroup label="{{ __('Regular Leaves') }}">
                         <option value="earned_leave" data-requires-duration="1">{{ __('Earned Leave') }}</option>
                         <option value="sick_leave" data-requires-duration="1">{{ __('Sick Leave') }}</option>
                     </optgroup>
+                    @endif
                     @if(count($leavetypes) > 0)
                         <optgroup label="{{ __('Special Leave Types') }}">
                             @php
@@ -83,6 +86,20 @@
                     @endif
                 </select>
                 <small class="form-text text-muted">{{ __('Select a leave type') }}</small>
+                @if(!$isEligibleForPaidLeave)
+                    <div class="alert alert-warning mt-2 mb-0 py-2">
+                        @php
+                            $leaveFromLabel = !empty($leaveEligibleFromDate)
+                                ? \Auth::user()->dateFormat(\Carbon\Carbon::parse($leaveEligibleFromDate)->toDateString())
+                                : '';
+                        @endphp
+                        {{ __('Paid leave starts after 6 months from joining.') }}
+                        @if($leaveFromLabel)
+                            {{ __('Earned Leave and Sick Leave will be available from :date.', ['date' => $leaveFromLabel]) }}
+                        @endif
+                        {{ __('Until then you may apply Leave Without Pay.') }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>

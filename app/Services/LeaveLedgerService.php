@@ -137,15 +137,7 @@ class LeaveLedgerService
                 $defaultAllocation = 0;
                 
                 $employee = Employee::find($employeeId);
-                $isEligible = true;
-                if ($employee && !empty($employee->company_doj)) {
-                    $eligibilityDate = \Carbon\Carbon::parse($employee->company_doj)->addDays(30);
-                    if ($now->lt($eligibilityDate)) {
-                        $isEligible = false;
-                    }
-                }
-                
-                if ($isEligible) {
+                if ($employee && $employee->isEligibleForPaidLeave($now)) {
                     if ($leaveType->title === 'Earned Leave') {
                         $defaultAllocation = 1.5;
                     } elseif ($leaveType->title === 'Sick Leave') {
@@ -203,15 +195,7 @@ class LeaveLedgerService
             $defaultAllocation = 0;
             
             $employee = Employee::find($employeeId);
-            $isEligible = true;
-            if ($employee && !empty($employee->company_doj)) {
-                $eligibilityDate = \Carbon\Carbon::parse($employee->company_doj)->addDays(30);
-                if ($now->lt($eligibilityDate)) {
-                    $isEligible = false;
-                }
-            }
-            
-            if ($isEligible) {
+            if ($employee && $employee->isEligibleForPaidLeave($now)) {
                 if ($leaveType->title === 'Earned Leave') {
                     $defaultAllocation = 1.5;
                 } elseif ($leaveType->title === 'Sick Leave') {

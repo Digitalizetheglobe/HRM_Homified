@@ -35,6 +35,7 @@ class Employee extends Model
         'education_details',
         'experience_details',
         'company_doj',
+        'shift',
         'documents',
         'account_holder_name',
         'account_number',
@@ -62,6 +63,46 @@ class Employee extends Model
         'experience_details' => 'array',
         'education_images' => 'array',
     ];
+
+    public const SHIFTS = [
+        'first' => 'First Shift (10:30 AM to 7:30 PM)',
+        'second' => 'Second Shift (11:00 AM to 7:00 PM)',
+        'third' => 'Third Shift (12:00 PM to 7:00 PM) — Saturday & Sunday only',
+    ];
+
+    public const SHIFT_TIMINGS = [
+        'first' => ['start' => '10:30:00', 'end' => '19:30:00'],
+        'second' => ['start' => '11:00:00', 'end' => '19:00:00'],
+        'third' => ['start' => '12:00:00', 'end' => '19:00:00'],
+    ];
+
+    public const SHIFT_GRACE_MINUTES = 15;
+
+    public function shiftKey(): string
+    {
+        return (!empty($this->shift) && isset(self::SHIFT_TIMINGS[$this->shift]))
+            ? $this->shift
+            : 'first';
+    }
+
+    public function shiftStartTime(): string
+    {
+        return self::SHIFT_TIMINGS[$this->shiftKey()]['start'];
+    }
+
+    public function shiftEndTime(): string
+    {
+        return self::SHIFT_TIMINGS[$this->shiftKey()]['end'];
+    }
+
+    public function shiftLabel(): string
+    {
+        if (empty($this->shift)) {
+            return __('Not Set');
+        }
+
+        return self::SHIFTS[$this->shift] ?? $this->shift;
+    }
 
 
     public function approvedBy()
@@ -464,11 +505,64 @@ public function canAccessSystem()
 
 
     /**
-     * Get the current Comp-Off balance for the employee
-     * Logic: (Total Earned records in comp_off_leaves) - (Total Approved Comp-Off Leaves)
-     *
-     * @return float
+     * Paid leave (Earned / Sick) starts 6 months after date of joining.
+     * Example: join 10 Aug 2026 → eligible from 10 Feb 2027.
      */
+    public const PAID_LEAVE_WAITING_MONTHS = 6;
+
+    public function leaveEligibleFrom()
+    {
+        if (empty($this->company_doj)) {
+            return null;
+        }
+
+        return \Carbon\Carbon::parse($this->company_doj)
+            ->addMonthsNoOverflow(self::PAID_LEAVE_WAITING_MONTHS)
+            ->startOfDay();
+    }
+
+    /**
+     * Whether the employee can apply paid leave on the given date.
+     */
+    public function isEligibleForPaidLeave($date = null): bool
+    {
+        $from = $this->leaveEligibleFrom();
+        if (!$from) {
+            return true;
+        }
+
+        $checkDate = $date ? \Carbon\Carbon::parse($date) : now();
+
+        return $checkDate->copy()->startOfDay()->gte($from);
+    }
+
+    /**
+     * Whether monthly EL/SL should be allocated for the given month.
+     * Allocation starts in the month when the 6-month wait ends.
+     */
+    public function isEligibleForPaidLeaveAllocation($date = null): bool
+    {
+        $from = $this->leaveEligibleFrom();
+        if (!$from) {
+            return true;
+        }
+
+        $checkDate = $date ? \Carbon\Carbon::parse($date) : now();
+
+        return $from->lte($checkDate->copy()->endOfMonth());
+    }
+
+    public function isJoiningMonth($year, $month): bool
+    {
+        if (empty($this->company_doj)) {
+            return false;
+        }
+
+        $doj = \Carbon\Carbon::parse($this->company_doj);
+
+        return (int) $doj->year === (int) $year && (int) $doj->month === (int) $month;
+    }
+
     public function compOffBalance()
     {
         $earned = \DB::table('comp_off_leaves')

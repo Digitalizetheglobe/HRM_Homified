@@ -446,6 +446,20 @@
                                             'readonly' => $isRestricted,
                                         ]) !!}
                                     </div>
+
+                                    <div class="form-group">
+                                        {!! Form::label('shift', __('Shift'), ['class' => 'form-label']) !!}
+                                        @if($isRestricted)
+                                            <input type="hidden" name="shift" value="{{ old('shift', $employee->shift) }}">
+                                        @endif
+                                        <select name="shift" id="shift" class="form-control" {{ $isRestricted ? 'disabled' : '' }}>
+                                            <option value="">{{ __('Select Shift') }}</option>
+                                            @foreach(\App\Models\Employee::SHIFTS as $shiftValue => $shiftLabel)
+                                                <option value="{{ $shiftValue }}" {{ old('shift', $employee->shift) == $shiftValue ? 'selected' : '' }}>{{ $shiftLabel }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small class="form-text text-muted">{{ __('Third Shift is only available for Saturday and Sunday.') }}</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>

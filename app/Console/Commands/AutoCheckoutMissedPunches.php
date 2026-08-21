@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\AttendanceEmployee;
-use App\Models\Utility;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -53,22 +52,10 @@ class AutoCheckoutMissedPunches extends Command
                     $clockOutTime = $clockInTime->copy()->addHours(5);
                     
                     $attendance->clock_out = $clockOutTime->format('H:i:s');
-                    $attendance->status = AttendanceEmployee::STATUS_HALF_DAY;
-                    
-                    // Calculate early leaving if necessary
-                    $companyEndTime = Utility::getValByName('company_end_time'); // Default fallback
-                    if ($companyEndTime) {
-                        $endTimeObj = Carbon::parse($attendance->date . ' ' . $companyEndTime);
-                        if ($clockOutTime->lt($endTimeObj)) {
-                            $diffInSeconds = $endTimeObj->diffInSeconds($clockOutTime);
-                            $hours = floor($diffInSeconds / 3600);
-                            $mins  = floor($diffInSeconds / 60 % 60);
-                            $secs  = floor($diffInSeconds % 60);
-                            $attendance->early_leaving = sprintf('%02d:%02d:%02d', $hours, $mins, $secs);
-                        }
-                    }
-                    
-                    $attendance->save();
+                    app(\App\Services\AttendanceRuleService::class)->applyAndSave($attendance, [
+                        'employee' => $attendance->employee,
+                        'force_reason' => AttendanceEmployee::REASON_HALF_DAY_MISSING_PUNCH_OUT,
+                    ]);
                     $count++;
                 }
             } catch (\Exception $e) {

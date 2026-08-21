@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Models\Utility;
 use App\Notifications\AttendanceRegularisationNotification;
+use App\Services\AttendanceRuleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -381,29 +382,20 @@ class AttendanceRegularisationController extends Controller
             ->first();
 
         if ($attendance) {
-            // Update existing attendance
             $attendance->clock_in = $clockIn;
             $attendance->clock_out = $clockOut;
-            $attendance->status = $status;
-            $attendance->late = $late;
-            $attendance->early_leaving = ($earlyLeaving > 0) ? $earlyLeaving : '00:00:00';
-            $attendance->overtime = $overtime;
-            $attendance->save();
         } else {
-            // Create new attendance record
             $attendance = new AttendanceEmployee();
             $attendance->employee_id = $regularisation->employee_id;
             $attendance->date = $regularisation->missed_attendance_date;
             $attendance->clock_in = $clockIn;
             $attendance->clock_out = $clockOut;
-            $attendance->status = $status;
-            $attendance->late = $late;
-            $attendance->early_leaving = ($earlyLeaving > 0) ? $earlyLeaving : '00:00:00';
-            $attendance->overtime = $overtime;
             $attendance->total_rest = '00:00:00';
             $attendance->created_by = \Auth::user()->creatorId();
-            $attendance->save();
         }
+        app(AttendanceRuleService::class)->applyAndSave($attendance, [
+            'employee' => Employee::find($regularisation->employee_id),
+        ]);
 
         // Update regularisation status
         $regularisation->status = 'Approved';
@@ -542,29 +534,20 @@ class AttendanceRegularisationController extends Controller
                 ->first();
 
             if ($attendance) {
-                // Update existing attendance
                 $attendance->clock_in = $clockIn;
                 $attendance->clock_out = $clockOut;
-                $attendance->status = $attendanceStatus;
-                $attendance->late = $late;
-                $attendance->early_leaving = ($earlyLeaving > 0) ? $earlyLeaving : '00:00:00';
-                $attendance->overtime = $overtime;
-                $attendance->save();
             } else {
-                // Create new attendance record
                 $attendance = new AttendanceEmployee();
                 $attendance->employee_id = $regularisation->employee_id;
                 $attendance->date = $regularisation->missed_attendance_date;
                 $attendance->clock_in = $clockIn;
                 $attendance->clock_out = $clockOut;
-                $attendance->status = $attendanceStatus;
-                $attendance->late = $late;
-                $attendance->early_leaving = ($earlyLeaving > 0) ? $earlyLeaving : '00:00:00';
-                $attendance->overtime = $overtime;
                 $attendance->total_rest = '00:00:00';
                 $attendance->created_by = \Auth::user()->creatorId();
-                $attendance->save();
             }
+            app(AttendanceRuleService::class)->applyAndSave($attendance, [
+                'employee' => Employee::find($regularisation->employee_id),
+            ]);
         }
 
         // Update regularisation status

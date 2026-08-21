@@ -69,33 +69,16 @@
                 <table class="table" id="pc-dt-render-column-cells">
                         <thead>
                             <tr>
-                                <th rowspan="2">{{ __('Employee Code') }}</th>
-                                <th rowspan="2">{{ __('Employee Name') }}</th>
-                                <th rowspan="2">{{ __('Monthly Days') }}</th>
-                                <th rowspan="2">{{ __('Payable Days') }}</th>
-                                <th rowspan="2">{{ __('Total Leave') }}</th>
-                                <th rowspan="2">{{ __('Actual Salary') }}</th>
-                                <th rowspan="2">{{ __('Monthly Salary') }}</th>
-                                <th colspan="5" style="text-align: center; background-color: #e3f2fd;">{{ __('Monthly Salary Breakdown') }}</th>
-                                <th rowspan="2">{{ __('Salary Arrears') }}</th>
-                                <th rowspan="2">{{ __('Petrol Allowance') }}</th>
-                                <th rowspan="2">{{ __('Gross Salary') }}</th>
-                                <th colspan="5" style="text-align: center; background-color: #fff3e0;">{{ __('Deductions') }}</th>
-                                <th rowspan="2">{{ __('Net Amount Payable') }}</th>
-                                <th rowspan="2">{{ __('Final Salary') }}</th>
-                                <th rowspan="2">{{ __('Status') }}</th>
-                            </tr>
-                            <tr>
-                                <th style="background-color: #e3f2fd;">{{ __('Basic Pay') }}<br><small>(45%)</small></th>
-                                <th style="background-color: #e3f2fd;">{{ __('HRA') }}<br><small>(18%)</small></th>
-                                <th style="background-color: #e3f2fd;">{{ __('Conveyance') }}<br><small>(3.72%)</small></th>
-                                <th style="background-color: #e3f2fd;">{{ __('Special Allowance') }}<br><small>(30.37%)</small></th>
-                                <th style="background-color: #e3f2fd;">{{ __('Medical') }}<br><small>(2.91%)</small></th>
-                                <th style="background-color: #fff3e0;">{{ __('LOP Days') }}</th>
-                                <th style="background-color: #fff3e0;">{{ __('LOP Amount') }}</th>
-                                <th style="background-color: #fff3e0;">{{ __('PT') }}</th>
-                                <th style="background-color: #fff3e0;">{{ __('Salary Advance') }}</th>
-                                <th style="background-color: #fff3e0;">{{ __('Casual Leave Deduction') }}</th>
+                                <th>{{ __('Employee Name') }}</th>
+                                <th>{{ __('Total Week Off') }}</th>
+                                <th>{{ __('Total Absent') }}</th>
+                                <th>{{ __('Total Present Days') }}</th>
+                                <th>{{ __('Total Paid Leave') }}</th>
+                                <th>{{ __('Total Leave Taken') }}</th>
+                                <th>{{ __('Total Remaining Leave') }}</th>
+                                <th>{{ __('Total Comp Off Earned') }}</th>
+                                <th>{{ __('Total Comp Off Used') }}</th>
+                                <th>{{ __('Total Remaining Comp Off') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -145,99 +128,44 @@
                         if (data.length > 0) {
                             $.each(data, function(indexInArray, valueOfElement) {
                                 var url_employee = valueOfElement['url'];
-                                
-                                // Array structure: [id, employee_code, employee_name, monthly_days, payable_days, total_leave, actual_salary, monthly_salary, basic_pay, hra, conveyance_allowance, special_allowance, medical_allowance, salary_arrears, petrol_allowance, gross_salary, lop_days, lop_deduction_amount, professional_tax, salary_advance, other_deductions, net_amount_payable, final_payable_salary, status]
-                                var employeeId = valueOfElement[0];
-                                var employeeCode = valueOfElement[1];
-                                var employeeName = valueOfElement[2];
-                                var monthlyDays = parseFloat(valueOfElement[3]) || 0;
-                                var payableDays = parseFloat(valueOfElement[4]) || 0;
-                                var totalLeave = parseFloat(valueOfElement[5]) || 0;
-                                var actualSalary = parseFloat(valueOfElement[6]) || 0;
-                                var monthlySalary = parseFloat(valueOfElement[7]) || 0;
-                                var basicPay = parseFloat(valueOfElement[8]) || 0;
-                                var hra = parseFloat(valueOfElement[9]) || 0;
-                                var conveyanceAllowance = parseFloat(valueOfElement[10]) || 0;
-                                var specialAllowance = parseFloat(valueOfElement[11]) || 0;
-                                var medicalAllowance = parseFloat(valueOfElement[12]) || 0;
-                                var salaryArrears = parseFloat(valueOfElement[13]) || 0;
-                                var petrolAllowance = parseFloat(valueOfElement[14]) || 0;
-                                var grossSalary = parseFloat(valueOfElement[15]) || 0;
-                                var lopDays = parseFloat(valueOfElement[16]) || 0;
-                                var lopDeductionAmount = parseFloat(valueOfElement[17]) || 0;
-                                var professionalTax = parseFloat(valueOfElement[18]) || 0;
-                                var salaryAdvance = parseFloat(valueOfElement[19]) || 0;
-                                var otherDeductions = parseFloat(valueOfElement[20]) || 0;
-                                var netAmountPayable = parseFloat(valueOfElement[21]) || 0;
-                                var finalPayableSalary = parseFloat(valueOfElement[22]) || 0;
-                                var status = valueOfElement[23] || 'Pending';
+                                var employeeName = valueOfElement[1] || '';
+                                var totalWeekOff = parseFloat(valueOfElement[2]) || 0;
+                                var totalAbsent = parseFloat(valueOfElement[3]) || 0;
+                                var totalPresent = parseFloat(valueOfElement[4]) || 0;
+                                var totalPaidLeave = parseFloat(valueOfElement[5]) || 0;
+                                var totalLeaveTaken = parseFloat(valueOfElement[6]) || 0;
+                                var totalRemainingLeave = parseFloat(valueOfElement[7]) || 0;
+                                var totalCompOffEarned = parseFloat(valueOfElement[8]) || 0;
+                                var totalCompOffUsed = parseFloat(valueOfElement[9]) || 0;
+                                var totalRemainingCompOff = parseFloat(valueOfElement[10]) || 0;
 
-                                // Format numbers with Indian locale (comma separators)
-                                function formatCurrency(num) {
+                                function formatNumber(num) {
                                     return parseFloat(num).toLocaleString('en-IN', {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2
                                     });
                                 }
 
-                                // Status cell - show button with confirmation for Finance & Accounts, badge for others
-                                var statusCell = '';
-                                @if ($isFinanceAccounts)
-                                    var statusBadgeClass = status === 'Done' ? 'bg-success' : 'bg-info';
-                                    
-                                    if (status === 'Done') {
-                                        // When status is Done, only show badge (no button - payment is final)
-                                        statusCell = '<td><span class="badge ' + statusBadgeClass + '">' + status + '</span></td>';
-                                    } else {
-                                        // When status is Pending, show badge + Mark as Paid button
-                                        statusCell = '<td>' +
-                                            '<span class="badge ' + statusBadgeClass + '" style="margin-right: 10px;">' + status + '</span>' +
-                                            '<button type="button" class="btn btn-sm btn-success mark-payment-btn" ' +
-                                            'data-employee-id="' + employeeId + '" ' +
-                                            'data-employee-name="' + employeeName + '" ' +
-                                            'data-current-status="' + status + '" ' +
-                                            'data-new-status="Done">' +
-                                            '<i class="ti ti-check"></i> Mark as Paid' +
-                                            '</button>' +
-                                            '</td>';
-                                    }
-                                @else
-                                    var statusBadgeClass = status === 'Done' ? 'bg-success' : 'bg-info';
-                                    statusCell = '<td><span class="badge ' + statusBadgeClass + '">' + status + '</span></td>';
-                                @endif
+                                var nameCell = url_employee
+                                    ? '<a href="' + url_employee + '">' + employeeName + '</a>'
+                                    : employeeName;
 
                                 tr +=
                                     '<tr>' +
-                                    '<td><a class="btn btn-outline-primary" href="' + url_employee + '">' + employeeCode + '</a></td>' +
-                                    '<td>' + employeeName + '</td>' +
-                                    '<td>' + formatCurrency(monthlyDays) + '</td>' +
-                                    '<td>' + formatCurrency(payableDays) + '</td>' +
-                                    '<td>' + formatCurrency(totalLeave) + '</td>' +
-                                    '<td>' + formatCurrency(actualSalary) + '</td>' +
-                                    '<td><strong>' + formatCurrency(monthlySalary) + '</strong></td>' +
-                                    '<td style="background-color: #e3f2fd;">' + formatCurrency(basicPay) + '</td>' +
-                                    '<td style="background-color: #e3f2fd;">' + formatCurrency(hra) + '</td>' +
-                                    '<td style="background-color: #e3f2fd;">' + formatCurrency(conveyanceAllowance) + '</td>' +
-                                    '<td style="background-color: #e3f2fd;">' + formatCurrency(specialAllowance) + '</td>' +
-                                    '<td style="background-color: #e3f2fd;">' + formatCurrency(medicalAllowance) + '</td>' +
-                                    '<td>' + formatCurrency(salaryArrears) + '</td>' +
-                                    '<td>' + formatCurrency(petrolAllowance) + '</td>' +
-                                    '<td><strong>' + formatCurrency(grossSalary) + '</strong></td>' +
-                                    '<td style="background-color: #fff3e0;">' + formatCurrency(lopDays) + '</td>' +
-                                    '<td style="background-color: #fff3e0;">' + formatCurrency(lopDeductionAmount) + '</td>' +
-                                    '<td style="background-color: #fff3e0;">' + formatCurrency(professionalTax) + '</td>' +
-                                    '<td style="background-color: #fff3e0;">' + formatCurrency(salaryAdvance) + '</td>' +
-                                    '<td style="background-color: #fff3e0;">' + formatCurrency(otherDeductions) + '</td>' +
-                                    '<td style="background-color: #fff3e0;"><strong>' + formatCurrency(netAmountPayable) + '</strong></td>' +
-                                    '<td><strong style="color: #28a745; font-size: 1.1em;">' + formatCurrency(finalPayableSalary) + '</strong></td>' +
-                                    statusCell +
+                                    '<td>' + nameCell + '</td>' +
+                                    '<td>' + formatNumber(totalWeekOff) + '</td>' +
+                                    '<td>' + formatNumber(totalAbsent) + '</td>' +
+                                    '<td>' + formatNumber(totalPresent) + '</td>' +
+                                    '<td>' + formatNumber(totalPaidLeave) + '</td>' +
+                                    '<td>' + formatNumber(totalLeaveTaken) + '</td>' +
+                                    '<td>' + formatNumber(totalRemainingLeave) + '</td>' +
+                                    '<td>' + formatNumber(totalCompOffEarned) + '</td>' +
+                                    '<td>' + formatNumber(totalCompOffUsed) + '</td>' +
+                                    '<td>' + formatNumber(totalRemainingCompOff) + '</td>' +
                                     '</tr>';
                             });
                         } else {
-                            // Count total columns including rowspan headers
-                            var colspan = 23; // Total columns: 7 single + 5 allowance breakdown + 5 deduction + 6 others
-                            tr = '<tr><td class="dataTables-empty" colspan="' + colspan +
-                                '">{{ __('No entries found') }}</td></tr>';
+                            tr = '<tr><td class="dataTables-empty" colspan="10">{{ __('No entries found') }}</td></tr>';
                         }
 
                         $('#pc-dt-render-column-cells tbody').html(tr);
@@ -436,53 +364,11 @@
         
         /* Ensure proper column width alignment */
         #pc-dt-render-column-cells th {
-            min-width: 120px;
+            min-width: 140px;
         }
         
-        #pc-dt-render-column-cells th:nth-child(1),
-        #pc-dt-render-column-cells th:nth-child(2) {
-            min-width: 180px; /* Employee Code, Employee Name */
-        }
-        
-        #pc-dt-render-column-cells th:nth-child(3),
-        #pc-dt-render-column-cells th:nth-child(4) {
-            min-width: 160px; /* Monthly Days, Payable Days */
-        }
-        
-        #pc-dt-render-column-cells th:nth-child(5),
-        #pc-dt-render-column-cells th:nth-child(6) {
-            min-width: 180px; /* Total Leave, Actual Salary */
-        }
-        
-        #pc-dt-render-column-cells th:nth-child(7),
-        #pc-dt-render-column-cells th:nth-child(8) {
-            min-width: 240px; /* Monthly Salary, Salary Arrears */
-        }
-        
-        #pc-dt-render-column-cells th:nth-child(9),
-        #pc-dt-render-column-cells th:nth-child(10) {
-            min-width: 180px; /* Petrol Allowance, Gross Salary */
-        }
-        
-        #pc-dt-render-column-cells th:nth-child(11) {
-            min-width: 160px; /* Net Amount Payable */
-        }
-        
-        #pc-dt-render-column-cells th:nth-child(12) {
-            min-width: 350px; /* Final Salary - increased width */
-        }
-        
-        #pc-dt-render-column-cells th:nth-child(13) {
-            min-width: 200px; /* Status */
-        }
-        
-        /* Special styling for header rows */
-        #pc-dt-render-column-cells tr:nth-child(2) th {
-            background-color: #e3f2fd !important;
-        }
-        
-        #pc-dt-render-column-cells tr:nth-child(3) th {
-            background-color: #fff3e0 !important;
+        #pc-dt-render-column-cells th:nth-child(1) {
+            min-width: 200px;
         }
     </style>
     
