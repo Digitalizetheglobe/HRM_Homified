@@ -55,6 +55,7 @@
     <meta name="keywords" content="Dashboard Template" />
     <meta name="author" content="Rajodiya Infotech" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="app-base" content="{{ url('/') }}">
     <!-- Favicon icon -->
     <link rel="icon" href="{{ $logo . '/' . (isset($favicon) && !empty($favicon) ? $favicon .'?'.time() : 'favicon.png' .'?'.time()) }}"
         type="image/x-icon" />
@@ -181,6 +182,7 @@
 
     <script src="{{ asset('assets/js/plugins/choices.min.js') }}"></script>
     <script src="{{ asset('js/jquery.min.js') }}"></script>
+    <script src="{{ asset('js/csrf-handler.js') }}"></script>
     <script src="{{ asset('js/jquery.form.js') }}"></script>
 
     <script src="{{ asset('js/letter.avatar.js') }}"></script>
@@ -198,7 +200,7 @@
     <script src="{{ asset('js/custom.js') }}"></script>
 
     <script src="{{ asset('js/chatify/autosize.js') }}"></script>
-    <script src='https://unpkg.com/nprogress@0.2.0/nprogress.js'></script>
+    <script src="{{ asset('js/nprogress-lite.js') }}"></script>
 
     <!-- <script>
         if ($(".pc-dt-simple").length) {

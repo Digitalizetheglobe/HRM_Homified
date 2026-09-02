@@ -9,6 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="app-base" content="{{ url('/') }}">
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
@@ -97,19 +98,8 @@
         @include('layouts.cookie_consent')
     @endif
 
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-            navigator.serviceWorker.register("{{ asset('serviceworker.js') }}")
-                .then(function (registration) {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                })
-                .catch(function (error) {
-                    console.error('ServiceWorker registration failed:', error);
-                });
-        });
-    }
-</script>
+    <script src="{{ asset('js/pwa-register.js') }}"></script>
+    <script src="{{ asset('js/csrf-handler.js') }}"></script>
 
 
 </body>

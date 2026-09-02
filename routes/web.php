@@ -206,6 +206,12 @@ Route::get('/storage/{path}', function ($path) {
 })->where('path', '.*')->name('storage.proxy');
 
 
+Route::get('/csrf-token', function () {
+    return response()
+        ->json(['token' => csrf_token()])
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+})->name('csrf.token');
+
 require __DIR__ . '/auth.php';
 
 Route::get('/offline', function () {

@@ -47,15 +47,27 @@ class Handler extends ExceptionHandler
             //
         });
 
-        // Globally catch CSRF Token Mismatch to completely remove the "Page Expired" screen
         $this->renderable(function (\Illuminate\Session\TokenMismatchException $e, $request) {
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json(['success' => false, 'message' => 'CSRF token mismatch.'], 419);
+            $token = csrf_token();
+
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                return response()
+                    ->json([
+                        'success' => false,
+                        'message' => 'Your session token was refreshed. Please try again.',
+                        'token' => $token,
+                    ], 419)
+                    ->header('X-CSRF-TOKEN', $token)
+                    ->header('Cache-Control', 'no-store');
             }
 
-            // Redirect gracefully instead of showing the ugly 419 error page
-            return redirect()->guest(route('login'))
-                ->with('error', 'Your session expired due to inactivity. Please log in again or refresh.');
+            if ($request->is('login') || $request->routeIs('login')) {
+                return redirect()->route('login');
+            }
+
+            $fallback = $request->headers->get('referer') ?: url('/');
+
+            return redirect()->to($fallback);
         });
     }
 }

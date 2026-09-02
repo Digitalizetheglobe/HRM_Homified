@@ -6,8 +6,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // feather icon end
   // remove pre-loader start
   setTimeout(function () {
-    document.querySelector(".loader-bg").remove();
-  }, 400);
+    var loader = document.querySelector(".loader-bg");
+    if (loader) {
+      loader.remove();
+    }
+    document.body.classList.add("loaded");
+  }, 200);
   // remove pre-loader end
   if (!document.querySelector("body").classList.contains("dash-horizontal")) {
     addscroller();

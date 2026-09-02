@@ -249,7 +249,17 @@ class AuthenticatedSessionController extends Controller
     private function saveLoginDetails($user)
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
-        $query = @unserialize(file_get_contents('http://ip-api.com/php/' . $ip));
+        $query = [];
+        try {
+            $context = stream_context_create(['http' => ['timeout' => 2]]);
+            $raw = @file_get_contents('http://ip-api.com/php/' . $ip, false, $context);
+            $decoded = $raw ? @unserialize($raw) : false;
+            if (is_array($decoded)) {
+                $query = $decoded;
+            }
+        } catch (\Throwable $e) {
+            $query = [];
+        }
         $whichbrowser = new Parser($_SERVER['HTTP_USER_AGENT']);
         $referrer = isset($_SERVER['HTTP_REFERER']) ? parse_url($_SERVER['HTTP_REFERER']) : [];
 

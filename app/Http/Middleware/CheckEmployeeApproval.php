@@ -35,6 +35,7 @@ class CheckEmployeeApproval
                     'company-policy.employee.acknowledge',
                     'company.logo',
                     'storage.proxy',
+                    'csrf.token',
                 ];
 
                 $currentRoute = $request->route() ? $request->route()->getName() : null;

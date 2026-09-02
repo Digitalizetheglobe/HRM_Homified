@@ -51,6 +51,7 @@
 
     <meta charset="utf-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="app-base" content="{{ url('/') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="description" content="Dashboard Template Description" />
@@ -84,9 +85,6 @@
     <link rel="stylesheet" href="{{ asset('assets/fonts/fontawesome.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/fonts/material.css') }}">
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
-
-    <!-- Datepicker CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css" media="print" onload="this.media='all'">
 
     <!-- Mobile Date Input Fix -->
     <style>
@@ -130,12 +128,6 @@
         }
     </style>
 
-<!-- jQuery and jQuery UI -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-
-
-
     <!-- vendor css -->
 
     <link rel="stylesheet" href="{{ asset('assets/css/customizer.css') }}">
@@ -154,7 +146,9 @@
     <meta name="url" content="{{ url('') . '/' . config('chatify.routes.prefix') }}"
         data-user="{{ Auth::user()->id }}">
 
-    <link rel='stylesheet' href='https://unpkg.com/nprogress@0.2.0/nprogress.css' />
+    <style>
+        .loader-bg.done { display: none !important; }
+    </style>
 
     @if ($setting['cust_darklayout'] == 'on')
         <link rel="stylesheet" href="{{ asset('assets/css/custom-dark.css') }}">
@@ -564,6 +558,29 @@
             <div class="loader-fill"></div>
         </div>
     </div>
+    <script>
+        (function () {
+            function hideLoader() {
+                var el = document.querySelector('.loader-bg');
+                if (el) {
+                    el.classList.add('done');
+                    if (el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                }
+                if (document.body) {
+                    document.body.classList.add('loaded');
+                }
+            }
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                setTimeout(hideLoader, 80);
+            } else {
+                document.addEventListener('DOMContentLoaded', function () { setTimeout(hideLoader, 80); });
+            }
+            window.addEventListener('load', hideLoader);
+            setTimeout(hideLoader, 1200);
+        })();
+    </script>
     <!-- [ Pre-loader ] End -->
     <!-- [ navigation menu ] start -->
     @include('partial.Admin.menu')
@@ -752,6 +769,7 @@
     <!-- Required Js -->
     <script src="{{ asset('assets/js/plugins/choices.min.js') }}"></script>
     <script src="{{ asset('js/jquery.min.js') }}"></script>
+    <script src="{{ asset('js/csrf-handler.js') }}"></script>
     <script src="{{ asset('js/jquery.form.js') }}"></script>
 
     <script src="{{ asset('js/letter.avatar.js') }}"></script>
@@ -770,7 +788,7 @@
     <script src="{{ asset('js/custom.js') }}"></script>
 
     <script src="{{ asset('js/chatify/autosize.js') }}"></script>
-    <script src='https://unpkg.com/nprogress@0.2.0/nprogress.js'></script>
+    <script src="{{ asset('js/nprogress-lite.js') }}"></script>
 
 
     {{-- <script>
@@ -1509,20 +1527,7 @@
         @endif
     @endif
 
-    <script>
-        // PWA Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register("{{ asset('serviceworker.js') }}")
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.error('ServiceWorker registration failed:', error);
-                    });
-            });
-        }
-    </script>
+    <script src="{{ asset('js/pwa-register.js') }}"></script>
 
     <!-- Global Document Viewer Modal -->
     <div class="modal fade" id="documentViewerModal" tabindex="-1" aria-labelledby="documentViewerModalLabel" aria-hidden="true">

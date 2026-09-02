@@ -1,90 +1,88 @@
-const staticCacheName = "pwa-v" + new Date().getTime();
+const CACHE_NAME = 'hrm-static-v4';
 
-const filesToCache = [
-  '/',
-  '/dashboard',
+const STATIC_ASSETS = [
   '/offline',
-  '/css/app.css',
-  '/js/app.js',
-  '/assets/fonts/tabler-icons.min.css',
-  '/assets/fonts/fontawesome.css',
-  '/assets/fonts/feather.css',
-  '/assets/css/plugins/style.css',
-  '/assets/fonts/tabler/tabler-icons.woff2',
-  '/assets/fonts/tabler/tabler-icons.woff',
-  '/assets/fonts/tabler/tabler-icons.ttf',
-  '/assets/fonts/fontawesome/fa-solid-900.woff2',
-  '/assets/fonts/fontawesome/fa-solid-900.woff',
-  '/assets/fonts/fontawesome/fa-solid-900.ttf',
-  '/assets/fonts/fontawesome/fa-regular-400.woff2',
-  '/assets/fonts/fontawesome/fa-regular-400.woff',
-  '/assets/fonts/fontawesome/fa-regular-400.ttf',
-  '/assets/fonts/fontawesome/fa-brands-400.woff2',
-  '/assets/fonts/fontawesome/fa-brands-400.woff',
-  '/assets/fonts/fontawesome/fa-brands-400.ttf',
   '/images/icons/apk_icon.png',
 ];
 
-// Install
-self.addEventListener('install', event => {
+const STATIC_EXT = /\.(?:js|css|woff2?|ttf|otf|eot|png|jpg|jpeg|gif|svg|ico|webp)$/i;
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(staticCacheName).then(cache => {
-      // Use return to ensure install fails if cache fails
-      return cache.addAll(filesToCache);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS).catch(() => undefined))
   );
 });
 
-// Activate
-self.addEventListener('activate', event => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames =>
+    caches.keys().then((names) =>
       Promise.all(
-        cacheNames
-          .filter(cache => cache.startsWith("pwa-"))
-          .filter(cache => cache !== staticCacheName)
-          .map(cache => caches.delete(cache))
+        names
+          .filter((name) => name === CACHE_NAME ? false : (name.startsWith('pwa-') || name.startsWith('hrm-static-')))
+          .map((name) => caches.delete(name))
       )
-    )
+    ).then(() => self.clients.claim())
   );
 });
 
-// Fetch
-self.addEventListener('fetch', event => {
-  // Skip cross-origin requests and non-GET requests
-  if (event.request.method !== 'GET') return;
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
-  // Skip PDF and download routes to ensure background downloads work correctly
-  const url = event.request.url;
-  if (url.includes('.pdf') || 
-      url.includes('download') || 
-      url.includes('export') ||
-      url.includes('offer_letter') ||
-      url.includes('increment_letter')) {
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+
+  if (request.method !== 'GET') {
     return;
   }
 
-  // Navigation requests (Pages): Network First, fallback to cache/offline
-  if (event.request.mode === 'navigate') {
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch (e) {
+    return;
+  }
+
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (url.pathname.endsWith('/csrf-token')) {
+    return;
+  }
+
+  const isDocument =
+    request.mode === 'navigate' ||
+    request.destination === 'document' ||
+    (request.headers.get('accept') || '').includes('text/html');
+
+  if (isDocument) {
     event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          // Fallback to cached dashboard or offline page
-          return caches.match('/dashboard') || caches.match('/') || caches.match('/offline');
-        })
+      fetch(request, { cache: 'no-store' }).catch(() => caches.match('/offline'))
     );
     return;
   }
 
-  // Static assets: Cache First, fallback to network
+  if (!STATIC_EXT.test(url.pathname)) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request).catch(() => {
-        // Only return offline page if it's a page request
-        if (event.request.destination === 'document') {
-          return caches.match('/offline');
-        }
-      });
+    caches.match(request).then((cached) => {
+      const networked = fetch(request)
+        .then((response) => {
+          if (response && response.ok && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined);
+          }
+          return response;
+        })
+        .catch(() => cached);
+
+      return cached || networked;
     })
   );
 });

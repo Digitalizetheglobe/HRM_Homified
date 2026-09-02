@@ -73,6 +73,8 @@
     <![endif]-->
     <!-- Meta -->
     <meta charset="utf-8" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="app-base" content="{{ url('/') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui" />
 
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -211,6 +213,7 @@
 
     <!-- Required Js -->
     <script src="{{ asset('js/jquery.min.js') }}"></script>
+    <script src="{{ asset('js/csrf-handler.js') }}"></script>
     <script src="{{ asset('assets/js/vendor-all.js') }}"></script>
     <script src="{{ asset('assets/js/plugins/bootstrap.min.js') }}"></script>
     <script src="{{ asset('assets/js/plugins/feather.min.js') }}"></script>
@@ -250,20 +253,7 @@
             show_toastr('Error', '{!! $message !!}', 'error');
         </script>
     @endif
-    <script>
-        // PWA Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register("{{ asset('serviceworker.js') }}")
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.error('ServiceWorker registration failed:', error);
-                    });
-            });
-        }
-    </script>
+    <script src="{{ asset('js/pwa-register.js') }}"></script>
 </body>
 
 </html>

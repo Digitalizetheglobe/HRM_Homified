@@ -65,13 +65,13 @@ class Employee extends Model
     ];
 
     public const SHIFTS = [
-        'first' => 'First Shift (10:30 AM to 7:30 PM)',
+        'first' => 'First Shift (10:30 AM to 7:00 PM)',
         'second' => 'Second Shift (11:00 AM to 7:00 PM)',
         'third' => 'Third Shift (12:00 PM to 7:00 PM) — Saturday & Sunday only',
     ];
 
     public const SHIFT_TIMINGS = [
-        'first' => ['start' => '10:30:00', 'end' => '19:30:00'],
+        'first' => ['start' => '10:30:00', 'end' => '19:00:00'],
         'second' => ['start' => '11:00:00', 'end' => '19:00:00'],
         'third' => ['start' => '12:00:00', 'end' => '19:00:00'],
     ];
