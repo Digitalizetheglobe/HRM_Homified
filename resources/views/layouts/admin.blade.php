@@ -1301,9 +1301,9 @@
                         let shouldLog = false;
                         let reason = "";
 
-                        // Reject extreme low-accuracy readings (e.g. > 100 meters noise) unless initial
+                        // Indoor / urban GPS is often 40–150m inaccurate; drop weak fixes after the first.
                         const acc = (accuracy !== null && accuracy !== undefined) ? accuracy : 30;
-                        if (acc > 120 && lastLat !== null) {
+                        if (acc > 80 && lastLat !== null) {
                             console.log(`[${source}] Ignored inaccurate location ping (Accuracy: ${acc.toFixed(1)}m too weak)`);
                             return;
                         }
@@ -1314,26 +1314,21 @@
                         } else {
                             const distance = getDistance(lastLat, lastLng, lat, lng);
                             const timeElapsed = now - lastPingTime;
+                            const minRequiredDistance = Math.max(100, acc * 1.25);
+                            const impliedSpeedKmh = timeElapsed > 0 ? (distance / (timeElapsed / 1000)) * 3.6 : 0;
 
-                            // Dynamic Noise Filter Threshold:
-                            // If accuracy radius is large (e.g., 40m), real movement must exceed accuracy noise margin
-                            const minRequiredDistance = Math.max(35, acc * 0.75);
+                            if (distance > 80 && impliedSpeedKmh > 120) {
+                                console.log(`[${source}] Ignored GPS spike ${distance.toFixed(0)}m at ${impliedSpeedKmh.toFixed(0)} km/h`);
+                                return;
+                            }
 
-                            // Log real movement if distance >= minRequiredDistance and at least 30 seconds passed
-                            if (distance >= minRequiredDistance && timeElapsed >= 30000) {
+                            if (distance >= minRequiredDistance && timeElapsed >= 45000) {
                                 shouldLog = true;
                                 reason = `Real Movement: ${distance.toFixed(1)}m (Acc: ${acc.toFixed(0)}m)`;
-                            } 
-                            // Periodic heartbeat every 60 seconds if stationary
-                            else if (timeElapsed >= 60000) {
-                                // If position drift is within noise radius, reuse last known good coordinates to avoid map zig-zags
-                                if (distance < minRequiredDistance) {
-                                    lat = lastLat;
-                                    lng = lastLng;
-                                    reason = "Stationary Heartbeat (60s)";
-                                } else {
-                                    reason = "Periodic Heartbeat (60s)";
-                                }
+                            } else if (timeElapsed >= 180000) {
+                                lat = lastLat;
+                                lng = lastLng;
+                                reason = "Stationary Heartbeat (3 min)";
                                 shouldLog = true;
                             }
                         }

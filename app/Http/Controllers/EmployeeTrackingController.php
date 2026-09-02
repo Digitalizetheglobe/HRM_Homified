@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\GpsTrackCleaner;
 use App\Models\Employee;
 use App\Models\EmployeeLocationLog;
 use App\Models\AttendanceEmployee;
@@ -107,20 +108,13 @@ class EmployeeTrackingController extends Controller
 
         if ($lastLog) {
             $secondsSinceLastLog = now()->diffInSeconds($lastLog->pinged_at);
-            
-            // Calculate distance between last logged position and new ping via Haversine formula
-            $lat1 = deg2rad($lastLog->latitude);
-            $lng1 = deg2rad($lastLog->longitude);
-            $lat2 = deg2rad($request->latitude);
-            $lng2 = deg2rad($request->longitude);
+            $distanceMeters = GpsTrackCleaner::haversineMeters(
+                (float) $lastLog->latitude,
+                (float) $lastLog->longitude,
+                (float) $request->latitude,
+                (float) $request->longitude
+            );
 
-            $dlat = $lat2 - $lat1;
-            $dlng = $lng2 - $lng1;
-            $a = sin($dlat / 2) * sin($dlat / 2) + cos($lat1) * cos($lat2) * sin($dlng / 2) * sin($dlng / 2);
-            $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-            $distanceMeters = 6371000 * $c;
-
-            // 1. Strict time throttle: Ignore any ping received within 20 seconds of last log
             if ($secondsSinceLastLog < 20) {
                 return response()->json([
                     'success' => true,
@@ -129,8 +123,21 @@ class EmployeeTrackingController extends Controller
                 ]);
             }
 
-            // 2. Distance throttle: Ignore movement less than 25 meters unless 60 seconds have passed (stationary heartbeat)
-            if ($distanceMeters < 25 && $secondsSinceLastLog < 60) {
+            $speedKmh = $secondsSinceLastLog > 0
+                ? ($distanceMeters / max($secondsSinceLastLog, 1)) * 3.6
+                : 0;
+
+            // Indoor GPS often jumps 50–300m instantly; that is not real travel.
+            if ($distanceMeters > 80 && $speedKmh > GpsTrackCleaner::MAX_SPEED_KMH) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Ignored GPS spike (impossible speed).',
+                    'ignored' => true
+                ]);
+            }
+
+            // Stay put: do not log indoor drift under 100m except a 3-minute heartbeat.
+            if ($distanceMeters < GpsTrackCleaner::STAY_RADIUS_M && $secondsSinceLastLog < 180) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Ignored minor GPS jitter (Stationary).',
@@ -237,14 +244,16 @@ class EmployeeTrackingController extends Controller
             ->orderBy('pinged_at', 'asc')
             ->get();
 
+        $displayTz = $this->trackingDisplayTimezone();
         $formattedLogs = [];
         foreach ($logs as $index => $log) {
+            $pingedAt = $log->pinged_at->copy()->timezone($displayTz);
             $formattedLogs[] = [
                 'id' => $log->id,
                 'lat' => (float)$log->latitude,
                 'lng' => (float)$log->longitude,
-                'time' => $log->pinged_at->format('h:i A'),
-                'full_time' => $log->pinged_at->format('M d, Y h:i:s A'),
+                'time' => $pingedAt->format('h:i A'),
+                'full_time' => $pingedAt->format('M d, Y h:i:s A'),
                 'timestamp' => $log->pinged_at->timestamp,
                 'diff' => $log->pinged_at->diffForHumans(),
                 'type' => 'waypoint',
@@ -309,29 +318,26 @@ class EmployeeTrackingController extends Controller
             }
         }
 
-        // Re-index point numbers
+        usort($formattedLogs, function ($a, $b) {
+            return ($a['timestamp'] ?? 0) <=> ($b['timestamp'] ?? 0);
+        });
+
+        $rawPointCount = count($formattedLogs);
+        $formattedLogs = GpsTrackCleaner::toStayPoints($formattedLogs);
+
         foreach ($formattedLogs as $idx => &$item) {
             $item['index'] = $idx + 1;
+            if ($idx === 0 && ($attendance && !empty($attendance->clock_in))) {
+                $item['type'] = 'start';
+            } elseif ($idx === count($formattedLogs) - 1 && $attendance && !empty($attendance->clock_out) && $attendance->clock_out !== '00:00:00') {
+                $item['type'] = 'end';
+            } else {
+                $item['type'] = $item['type'] ?? 'stay';
+            }
         }
         unset($item);
 
-        // Calculate cumulative distance in KM via Haversine formula
-        $totalDistanceMeters = 0;
-        for ($i = 1; $i < count($formattedLogs); $i++) {
-            $lat1 = deg2rad($formattedLogs[$i-1]['lat']);
-            $lng1 = deg2rad($formattedLogs[$i-1]['lng']);
-            $lat2 = deg2rad($formattedLogs[$i]['lat']);
-            $lng2 = deg2rad($formattedLogs[$i]['lng']);
-
-            $dlat = $lat2 - $lat1;
-            $dlng = $lng2 - $lng1;
-
-            $a = sin($dlat / 2) * sin($dlat / 2) + cos($lat1) * cos($lat2) * sin($dlng / 2) * sin($dlng / 2);
-            $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-            $totalDistanceMeters += 6371000 * $c;
-        }
-
-        $totalDistanceKm = round($totalDistanceMeters / 1000, 2);
+        $totalDistanceKm = GpsTrackCleaner::stayPathDistanceKm($formattedLogs);
 
         $startLocation = count($formattedLogs) > 0 ? $formattedLogs[0] : null;
         $currentLocation = count($formattedLogs) > 0 ? $formattedLogs[count($formattedLogs) - 1] : null;
@@ -345,18 +351,21 @@ class EmployeeTrackingController extends Controller
         $isStationary = false;
 
         if ($currentLocation && isset($currentLocation['timestamp'])) {
-            $lastPingCarbon = Carbon::createFromTimestamp($currentLocation['timestamp']);
+            $lastPingTs = $currentLocation['last_timestamp'] ?? $currentLocation['timestamp'];
+            $lastPingCarbon = Carbon::createFromTimestamp($lastPingTs);
             $minsSinceLastPing = round(now()->diffInSeconds($lastPingCarbon) / 60, 1);
             
-            // Check if last 2 points are within 15 meters of each other
             $count = count($formattedLogs);
             if ($count >= 2) {
                 $p1 = $formattedLogs[$count - 2];
                 $p2 = $formattedLogs[$count - 1];
-                $distLastTwo = (abs($p1['lat'] - $p2['lat']) + abs($p1['lng'] - $p2['lng'])) * 111000;
-                if ($distLastTwo < 15) {
-                    $isStationary = true;
-                }
+                $distLastTwo = GpsTrackCleaner::haversineMeters(
+                    (float) $p1['lat'],
+                    (float) $p1['lng'],
+                    (float) $p2['lat'],
+                    (float) $p2['lng']
+                );
+                $isStationary = $distLastTwo < GpsTrackCleaner::STAY_RADIUS_M;
             } else {
                 $isStationary = true;
             }
@@ -394,6 +403,7 @@ class EmployeeTrackingController extends Controller
             'employee_name' => $employee ? $employee->name : 'Employee',
             'route' => $formattedLogs,
             'total_points' => count($formattedLogs),
+            'raw_point_count' => $rawPointCount,
             'total_distance_km' => $totalDistanceKm,
             'start_location' => $startLocation,
             'current_location' => $currentLocation,
@@ -405,6 +415,17 @@ class EmployeeTrackingController extends Controller
             'diagnostic_message' => $diagnosticMessage,
             'is_stationary' => $isStationary,
         ]);
+    }
+
+    /**
+     * Location logs are stored in app timezone (often UTC). Clock punches are local times.
+     * Show tracking times in India Standard Time when the app timezone is still UTC.
+     */
+    private function trackingDisplayTimezone(): string
+    {
+        $tz = config('app.timezone', 'UTC');
+
+        return ($tz === 'UTC' || $tz === 'Etc/UTC') ? 'Asia/Kolkata' : $tz;
     }
 }
 

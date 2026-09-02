@@ -276,12 +276,28 @@
             border-radius: 50%;
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
         }
+        .leaflet-div-icon-stay {
+            background: #1d4ed8;
+            border: 2px solid white;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(29, 78, 216, 0.45);
+        }
         .leaflet-div-icon-current {
             background: #3b82f6;
             border: 3px solid white;
             border-radius: 50%;
             box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.4), 0 3px 8px rgba(0,0,0,0.4);
             animation: pulse-marker 1.8s infinite;
+        }
+        .timeline-item.stay .timeline-badge {
+            border-color: #1d4ed8;
+            background: #1d4ed8;
         }
 
         @keyframes pulse-marker {
@@ -388,9 +404,9 @@
                     <i class="ti ti-map-pins"></i>
                 </div>
                 <div>
-                    <div class="stat-label">{{ __('Points Tracked') }}</div>
+                    <div class="stat-label">{{ __('Stops Visited') }}</div>
                     <div class="stat-value" id="stat_points">0</div>
-                    <div class="stat-sub">{{ __('Log Waypoints') }}</div>
+                    <div class="stat-sub" id="stat_points_sub">{{ __('GPS noise filtered') }}</div>
                 </div>
             </div>
         </div>
@@ -402,7 +418,7 @@
                 <div>
                     <div class="stat-label">{{ __('Distance Traveled') }}</div>
                     <div class="stat-value" id="stat_distance">0.00 km</div>
-                    <div class="stat-sub">{{ __('Cumulative Route Length') }}</div>
+                    <div class="stat-sub" id="stat_distance_sub">{{ __('Between real stops') }}</div>
                 </div>
             </div>
         </div>
@@ -541,6 +557,7 @@
             let routeLine = null;
             let routeLineBG = null;
             let markersGroup = L.featureGroup().addTo(map);
+            let stayCirclesGroup = L.featureGroup().addTo(map);
             let leafletMarkersMap = {}; // id -> marker instance
 
             // Date change handler
@@ -658,6 +675,7 @@
                         if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
                         if (routeLineBG) { map.removeLayer(routeLineBG); routeLineBG = null; }
                         markersGroup.clearLayers();
+                        stayCirclesGroup.clearLayers();
                         leafletMarkersMap = {};
 
                         let route = response.route || [];
@@ -718,7 +736,14 @@
                         }
 
                         $('#stat_points').text(response.total_points || route.length);
+                        const rawCount = response.raw_point_count || route.length;
+                        if (rawCount > (response.total_points || route.length)) {
+                            $('#stat_points_sub').text(`${rawCount} GPS pings → ${response.total_points || route.length} stops`);
+                        } else {
+                            $('#stat_points_sub').text('GPS noise filtered');
+                        }
                         $('#stat_distance').text(`${response.total_distance_km || '0.00'} km`);
+                        $('#stat_distance_sub').text('Between real stops');
 
                         if (latest) {
                             $('#stat_last_seen').text(latest.time || '--');
@@ -760,60 +785,76 @@
                                 }).addTo(map);
                             };
 
+                            const haversineM = (a, b) => {
+                                const R = 6371000;
+                                const dLat = (b[0] - a[0]) * Math.PI / 180;
+                                const dLon = (b[1] - a[1]) * Math.PI / 180;
+                                const x = Math.sin(dLat / 2) ** 2 +
+                                    Math.cos(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) *
+                                    Math.sin(dLon / 2) ** 2;
+                                return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+                            };
+
                             const defaultLatlngs = route.map(p => [p.lat, p.lng]);
-                            drawPolyline(defaultLatlngs); // Immediate straight line fallback
 
-                            // Road snapping via OSRM Match API if multiple points
                             if (route.length > 1) {
-                                let sampledRoute = route;
-                                if (route.length > 80) {
-                                    const step = Math.ceil(route.length / 80);
-                                    sampledRoute = route.filter((_, idx) => idx % step === 0 || idx === route.length - 1);
+                                drawPolyline(defaultLatlngs);
+                                const longestLeg = defaultLatlngs.reduce((max, pt, idx) => {
+                                    if (idx === 0) return max;
+                                    return Math.max(max, haversineM(defaultLatlngs[idx - 1], pt));
+                                }, 0);
+
+                                // Only snap to roads when the employee actually traveled between stops.
+                                // Snapping office GPS jitter creates the spider-web on the map.
+                                if (longestLeg >= 250) {
+                                    const coordsString = route.map(p => `${p.lng},${p.lat}`).join(';');
+                                    const matchUrl = `https://router.project-osrm.org/match/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+
+                                    $.getJSON(matchUrl, function(data) {
+                                        if (data.code === 'Ok' && data.matchings && data.matchings.length > 0) {
+                                            const snappedLatlngs = data.matchings[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                                            drawPolyline(snappedLatlngs);
+                                        }
+                                    }).fail(function() {
+                                        console.warn("OSRM routing server unavailable. Displaying stop-to-stop path.");
+                                    });
                                 }
-
-                                const coordsString = sampledRoute.map(p => `${p.lng},${p.lat}`).join(';');
-                                const matchUrl = `https://router.project-osrm.org/match/v1/driving/${coordsString}?overview=full&geometries=geojson`;
-
-                                $.getJSON(matchUrl, function(data) {
-                                    if (data.code === 'Ok' && data.matchings && data.matchings.length > 0) {
-                                        const snappedLatlngs = data.matchings[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                                        drawPolyline(snappedLatlngs);
-                                    } else {
-                                        const routeUrl = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
-                                        $.getJSON(routeUrl, function(routeData) {
-                                            if (routeData.code === 'Ok' && routeData.routes && routeData.routes.length > 0) {
-                                                const snappedLatlngs = routeData.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                                                drawPolyline(snappedLatlngs);
-                                            }
-                                        });
-                                    }
-                                }).fail(function() {
-                                    console.warn("OSRM routing server unavailable. Displaying direct GPS lines.");
-                                });
                             }
 
-                            // 3. Render Markers & Build Timeline
+                            // 3. Render stop markers, dwell circles & timeline
                             let timelineHtml = '';
 
                             route.forEach((pt, idx) => {
                                 const isFirst = (idx === 0);
                                 const isLast = (idx === route.length - 1);
                                 const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${pt.lat},${pt.lng}`;
+                                const dwell = pt.dwell_label || '';
+                                const pingCount = pt.ping_count || 1;
+                                const leftTime = pt.left_time || pt.time;
+
+                                L.circle([pt.lat, pt.lng], {
+                                    radius: 80,
+                                    color: '#3b82f6',
+                                    weight: 1,
+                                    fillColor: '#3b82f6',
+                                    fillOpacity: 0.12,
+                                    opacity: 0.45
+                                }).addTo(stayCirclesGroup);
                                 
-                                let markerClass = 'leaflet-div-icon-waypoint';
-                                let markerSize = [20, 20];
-                                let labelTitle = `Waypoint #${pt.index}`;
-                                let timelineType = 'waypoint';
+                                let markerClass = 'leaflet-div-icon-stay';
+                                let markerSize = [22, 22];
+                                let labelTitle = `Stop #${pt.index}`;
+                                let timelineType = 'stay';
                                 let badgeLetter = pt.index;
 
                                 if (isFirst && (hasClockIn || pt.type === 'start')) {
                                     markerClass = 'leaflet-div-icon-start';
-                                    markerSize = [14, 14];
-                                    labelTitle = '🟢 Morning Start Location (Clock-In)';
+                                    markerSize = [16, 16];
+                                    labelTitle = 'Morning start (clock-in)';
                                     timelineType = 'start';
                                     badgeLetter = 'S';
                                 } else if (isFirst) {
-                                    labelTitle = '📍 Initial Recorded Location';
+                                    labelTitle = 'First recorded stop';
                                     badgeLetter = '1';
                                 }
 
@@ -821,30 +862,30 @@
                                     if (healthStatus === 'signal_lost') {
                                         markerClass = 'leaflet-div-icon-end';
                                         markerSize = [16, 16];
-                                        labelTitle = `🔴 Tracking Signal Lost (Last Ping: ${pt.time})`;
+                                        labelTitle = `Last stop (signal lost ${pt.time})`;
                                         timelineType = 'end';
                                         badgeLetter = '!';
                                     } else if (healthStatus === 'live_stationary') {
                                         markerClass = 'leaflet-div-icon-current';
                                         markerSize = [20, 20];
-                                        labelTitle = `🔵 Live & Stationary (${employeeName})`;
+                                        labelTitle = `Currently here (${employeeName})`;
                                         timelineType = 'current';
                                         badgeLetter = 'L';
                                     } else if (isClockedIn) {
                                         markerClass = 'leaflet-div-icon-current';
                                         markerSize = [20, 20];
-                                        labelTitle = `🟢 Current Live Position (${employeeName})`;
+                                        labelTitle = `Current position (${employeeName})`;
                                         timelineType = 'current';
                                         badgeLetter = 'L';
                                     } else if (hasClockOut || pt.type === 'end') {
                                         markerClass = 'leaflet-div-icon-end';
-                                        markerSize = [14, 14];
-                                        labelTitle = '🔴 Clock-Out / End Location';
+                                        markerSize = [16, 16];
+                                        labelTitle = 'Clock-out / end location';
                                         timelineType = 'end';
                                         badgeLetter = 'E';
                                     } else if (!isFirst) {
-                                        labelTitle = `📍 Last Active Location (Point #${pt.index})`;
-                                        timelineType = 'waypoint';
+                                        labelTitle = `Last stop`;
+                                        timelineType = 'stay';
                                         badgeLetter = pt.index;
                                     }
                                 }
@@ -853,12 +894,13 @@
                                     icon: L.divIcon({
                                         className: markerClass,
                                         iconSize: markerSize,
-                                        html: markerClass === 'leaflet-div-icon-waypoint' ? pt.index : ''
+                                        html: (markerClass === 'leaflet-div-icon-waypoint' || markerClass === 'leaflet-div-icon-stay') ? pt.index : ''
                                     })
                                 }).bindPopup(`
-                                    <div style="min-width: 180px;">
+                                    <div style="min-width: 200px;">
                                         <b style="color: #1e293b; font-size: 0.9rem;">${labelTitle}</b><br>
-                                        <span class="text-muted small"><i class="ti ti-clock"></i> Time: ${pt.time} (${pt.diff || ''})</span><br>
+                                        <span class="text-muted small"><i class="ti ti-clock"></i> ${pt.time}${dwell && leftTime !== pt.time ? ' – ' + leftTime : ''}</span><br>
+                                        ${dwell ? `<span class="text-muted small d-block"><i class="ti ti-hourglass"></i> Stayed ${dwell} (${pingCount} GPS pings)</span>` : ''}
                                         <span class="text-muted small"><i class="ti ti-map-pin"></i> ${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)}</span><br>
                                         <a href="${gmapsUrl}" target="_blank" class="btn btn-sm btn-link p-0 text-primary mt-1 fw-bold">
                                             <i class="ti ti-external-link"></i> Open in Google Maps
@@ -868,23 +910,23 @@
 
                                 leafletMarkersMap[pt.id || idx] = marker;
 
-                                // Construct timeline HTML item
+                                const timeRange = (dwell && leftTime !== pt.time) ? `${pt.time} – ${leftTime}` : pt.time;
                                 timelineHtml += `
                                     <div class="timeline-item ${timelineType}" data-point-id="${pt.id || idx}" data-lat="${pt.lat}" data-lng="${pt.lng}">
                                         <div class="timeline-badge">${badgeLetter}</div>
                                         <div class="timeline-card">
                                             <div class="timeline-title">
                                                 <span>${labelTitle}</span>
-                                                <span class="timeline-time">${pt.time}</span>
+                                                <span class="timeline-time">${timeRange}</span>
                                             </div>
-                                            <div class="timeline-coords">${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)} • ${pt.diff || ''}</div>
+                                            <div class="timeline-coords">${dwell ? 'Stayed ' + dwell + ' • ' : ''}${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)}</div>
                                         </div>
                                     </div>
                                 `;
                             });
 
                             $('#timeline_list').html(timelineHtml);
-                            $('#timeline_count_badge').text(`${route.length} waypoints`);
+                            $('#timeline_count_badge').text(`${route.length} stop${route.length === 1 ? '' : 's'}`);
 
                             // Click handler for timeline item to center map and open popup
                             $('.timeline-item').click(function() {
@@ -915,8 +957,10 @@
 
                         // 4. Zoom / Fit Map bounds
                         if (!silent) {
-                            if (route.length > 0) {
-                                map.fitBounds(markersGroup.getBounds(), { padding: [50, 50] });
+                            if (route.length === 1) {
+                                map.setView([route[0].lat, route[0].lng], 17);
+                            } else if (route.length > 1) {
+                                map.fitBounds(markersGroup.getBounds(), { padding: [50, 50], maxZoom: 16 });
                             } else {
                                 map.setView(defaultCenter, 13);
                             }
