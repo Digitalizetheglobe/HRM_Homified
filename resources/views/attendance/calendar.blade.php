@@ -165,6 +165,7 @@
                             </div>
                         @endif
 
+                        <div class="calendar-grid-wrap">
                         <div class="calendar-grid">
                             @php
                                 $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $currentMonth, $currentYear);
@@ -287,6 +288,7 @@
                                 @endfor
                             </div>
                         </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -354,39 +356,54 @@
     </div>
 
     <style>
+        .calendar-grid-wrap {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
         .calendar-grid {
             display: flex;
             flex-direction: column;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
             border: 1px solid #eee;
             border-radius: 8px;
             overflow: hidden;
         }
-        .calendar-header-row {
+        .calendar-header-row,
+        .calendar-days-row {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            width: 100%;
+        }
+        .calendar-header-row {
             background: #f8f9fa;
             border-bottom: 1px solid #eee;
         }
         .calendar-day-head {
-            padding: 10px;
+            padding: 10px 4px;
             text-align: center;
             font-weight: bold;
             color: #555;
             border-right: 1px solid #eee;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+            white-space: nowrap;
         }
         .calendar-day-head:last-child { border-right: none; }
         
-        .calendar-days-row {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-        }
         .calendar-day {
             min-height: 100px;
+            min-width: 0;
             padding: 10px;
             border-right: 1px solid #eee;
             border-bottom: 1px solid #eee;
             position: relative;
             transition: all 0.2s;
+            box-sizing: border-box;
+            overflow: hidden;
         }
         .calendar-day:nth-child(7n) { border-right: none; }
         .calendar-day.editable-day {
@@ -423,15 +440,27 @@
         .day-info {
             font-size: 0.8rem;
             margin-top: 5px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         
         @media (max-width: 768px) {
             .calendar-day {
                 min-height: 70px;
-                padding: 5px;
+                padding: 4px 2px;
             }
-            .day-number { font-size: 0.9rem; }
-            .day-info { font-size: 0.7rem; }
+            .calendar-day-head {
+                padding: 8px 1px;
+                font-size: 0.7rem;
+            }
+            .day-number { font-size: 0.85rem; }
+            .day-info { font-size: 0.62rem; line-height: 1.2; }
+        }
+
+        @media (max-width: 400px) {
+            .calendar-day-head {
+                font-size: 0.65rem;
+            }
         }
     </style>
 @endsection
