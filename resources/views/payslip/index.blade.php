@@ -52,15 +52,9 @@
                         <div class="d-flex justify-content-end align-items-end gap-2">
                             <div class="filter-control-wrapper">
                                 <label class="form-label">{{ __('Month') }}</label>
-                                <select class="form-control month_date" name="year" tabindex="-1"
-                                    aria-hidden="true" style="min-width: 120px;">
-                                    <option value="--">--</option>
+                                <select class="form-control month_date" name="filter_month_select" style="min-width: 120px;">
                                     @foreach ($month as $k => $mon)
-                                        @php
-                                            $selected = date('m') == $k ? 'selected' : '';
-                                        @endphp
-                                        <option value="{{ $k }}" {{ $selected }}>{{ $mon }}
-                                        </option>
+                                        <option value="{{ $k }}" {{ date('m') == $k ? 'selected' : '' }}>{{ $mon }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -71,9 +65,9 @@
                             <div class="filter-control-wrapper">
                                 @if (Gate::check('payroll.payslip.export.all') || Gate::check('payroll.payslip.export.own'))
                                     <label class="form-label">&nbsp;</label>
-                                    {{ Form::open(['route' => ['payslip.export'], 'method' => 'POST', 'id' => 'payslip_form']) }}
-                                    <input type="hidden" name="filter_month" class="filter_month">
-                                    <input type="hidden" name="filter_year" class="filter_year">
+                                    {{ Form::open(['route' => ['payslip.export'], 'method' => 'POST', 'id' => 'payslip_export_form']) }}
+                                    <input type="hidden" name="filter_month" class="filter_month" value="{{ date('m') }}">
+                                    <input type="hidden" name="filter_year" class="filter_year" value="{{ date('Y') }}">
                                     <button type="submit" class="btn btn-primary export-btn-mobile" data-bs-toggle="tooltip" title="{{ __('Export') }}">
                                         <i class="ti ti-file-export text-white"></i>
                                     </button>
@@ -181,22 +175,34 @@
     </style>
     <script>
         $(document).ready(function() {
+            function syncExportFilters() {
+                var month = $(".month_date").val();
+                var year = $(".year_date").val();
+                if (!month || month === '--') {
+                    month = '{{ date('m') }}';
+                }
+                if (!year) {
+                    year = '{{ date('Y') }}';
+                }
+                $('.filter_month').val(month);
+                $('.filter_year').val(year);
+            }
+
+            $('#payslip_export_form').on('submit', function(e) {
+                syncExportFilters();
+                if (!$('.filter_month').val() || !$('.filter_year').val()) {
+                    e.preventDefault();
+                    show_toastr('Error', '{{ __('Please select month and year.') }}', 'error');
+                    return false;
+                }
+            });
+
             callback();
 
             function callback() {
-                var month = $(".month_date").val();
-                var year = $(".year_date").val();
-
-                $('.filter_month').val(month);
-                $('.filter_year').val(year);
-
-                if (month == '') {
-                    month = '{{ date('m', strtotime('last month')) }}';
-                    year = '{{ date('Y') }}';
-
-                    $('.filter_month').val(month);
-                    $('.filter_year').val(year);
-                }
+                syncExportFilters();
+                var month = $('.filter_month').val();
+                var year = $('.filter_year').val();
 
                 var datePicker = year + '-' + month;
 

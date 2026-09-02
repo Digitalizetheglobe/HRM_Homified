@@ -690,11 +690,39 @@ class PaySlipController extends Controller
 
     public function PayslipExport(Request $request)
     {
-        $name = 'payslip_' . date('Y-m-d i:h:s');
-        $data = \Excel::download(new PayslipExport($request), $name . '.xlsx');
-        ob_end_clean();
+        if (!Auth::user()->can('payroll.payslip.export.all') && !Auth::user()->can('payroll.payslip.export.own') && Auth::user()->type !== 'company') {
+            return redirect()->back()->with('error', __('Permission denied.'));
+        }
 
-        return $data;
+        $month = (!empty($request->filter_month) && $request->filter_month !== '--')
+            ? str_pad($request->filter_month, 2, '0', STR_PAD_LEFT)
+            : date('m');
+        $year = !empty($request->filter_year) ? $request->filter_year : date('Y');
+        $salaryMonth = $year . '-' . $month;
+
+        $query = PaySlip::where('salary_month', $salaryMonth)
+            ->where('created_by', Auth::user()->creatorId());
+
+        $canExportAll = Auth::user()->can('payroll.payslip.export.all') || Auth::user()->type === 'company';
+        if (!$canExportAll) {
+            $ownEmployee = Employee::where('user_id', Auth::id())->first();
+            if ($ownEmployee) {
+                $query->where('employee_id', $ownEmployee->id);
+            }
+        }
+
+        if ($query->count() === 0) {
+            return redirect()->route('payslip.index')->with('error', __('No employee payslips found for :month. Generate payslips for this month first, then export.', [
+                'month' => $salaryMonth,
+            ]));
+        }
+
+        $name = 'payslip_' . $salaryMonth . '_' . date('Y-m-d_His');
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        return \Excel::download(new PayslipExport($request), $name . '.xlsx');
     }
 
        public function employeeIdFormat($number)

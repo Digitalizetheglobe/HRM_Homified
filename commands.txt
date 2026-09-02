@@ -14,7 +14,7 @@ Developer PC
     cd /home/hrm.homifiedconsultants.com/public_html
 
 ------------------------------------------------------------------------
-
+        
 1. Latest Code Pull
 
     git pull origin main
@@ -48,7 +48,7 @@ If composer files did NOT change, skip this step.
 
 6. Restart OpenLiteSpeed (Optional but safe)
 
-        systemctl restart lsws
+        
 
 ------------------------------------------------------------------------
 
