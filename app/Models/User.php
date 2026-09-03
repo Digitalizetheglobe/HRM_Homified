@@ -11,10 +11,9 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 use App\Models\Employee;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Lab404\Impersonate\Models\Impersonate;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable
 {
     use Notifiable;
     use HasRoles;

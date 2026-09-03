@@ -64262,3 +64262,4 @@
 #59 C:\\xampp\\htdocs\\HRM_Homified\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\resources\\server.php(16): require_once('C:\\\\xampp\\\\htdocs...')
 #60 {main}
 "} 
+[2026-09-02 19:07:09] local.WARNING: Geocoding failed {"lat":"18.571116577373534","lng":"73.76999948794546","error":"cURL error 28: Operation timed out after 1505 milliseconds with 0 bytes received (see https://curl.haxx.se/libcurl/c/libcurl-errors.html) for https://nominatim.openstreetmap.org/reverse?format=json&lat=18.571116577373534&lon=73.76999948794546&zoom=18"} 

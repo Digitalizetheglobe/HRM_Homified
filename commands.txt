@@ -14,7 +14,7 @@ Developer PC
     cd /home/hrm.homifiedconsultants.com/public_html
 
 ------------------------------------------------------------------------
-        
+
 1. Latest Code Pull
 
     git pull origin main
@@ -48,46 +48,46 @@ If composer files did NOT change, skip this step.
 
 6. Restart OpenLiteSpeed (Optional but safe)
 
-        
+    systemctl restart lsws
 
 ------------------------------------------------------------------------
 
 7. Verify
 
-Open:
+    Open:
 
-https://hrm.homifiedconsultants.com
+    https://hrm.homifiedconsultants.com
 
-Check: - Login page opens - No 500 error - New feature visible -
-Storage/uploads working
-
-------------------------------------------------------------------------
-
-Quick Deployment
-
-Normal PHP changes:
-
-git pull origin main php artisan optimize:clear php artisan config:cache
-systemctl restart lsws
+    Check: - Login page opens - No 500 error - New feature visible -
+    Storage/uploads working
 
 ------------------------------------------------------------------------
 
-Composer changed:
+    Quick Deployment
 
-git pull origin main /usr/local/lsws/lsphp82/bin/php /usr/bin/composer
-install –no-dev –optimize-autoloader php artisan optimize:clear
-systemctl restart lsws
+    Normal PHP changes:
 
-------------------------------------------------------------------------
-
-Migration added:
-
-git pull origin main /usr/local/lsws/lsphp82/bin/php /usr/bin/composer
-install –no-dev –optimize-autoloader php artisan migrate –force php
-artisan optimize:clear systemctl restart lsws
+    git pull origin main php artisan optimize:clear php artisan config:cache
+    systemctl restart lsws
 
 ------------------------------------------------------------------------
 
-Important: - Never edit .env during normal deployment. - Take database
-backup before major updates. - If git pull reports conflicts, stop and
-resolve before continuing.
+    Composer changed:
+
+    git pull origin main /usr/local/lsws/lsphp82/bin/php /usr/bin/composer
+    install –no-dev –optimize-autoloader php artisan optimize:clear
+    systemctl restart lsws
+
+    ------------------------------------------------------------------------
+
+    Migration added:
+
+    git pull origin main /usr/local/lsws/lsphp82/bin/php /usr/bin/composer
+    install –no-dev –optimize-autoloader php artisan migrate –force php
+    artisan optimize:clear systemctl restart lsws
+
+------------------------------------------------------------------------
+
+    Important: - Never edit .env during normal deployment. - Take database
+    backup before major updates. - If git pull reports conflicts, stop and
+    resolve before continuing.

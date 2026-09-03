@@ -215,10 +215,7 @@ $currIncrementLetterLang = \App\Models\IncrementLetter::where('created_by',  \Au
                 if (!isset($request->SITE_RTL)) {
                     $post['SITE_RTL'] = 'off';
                 }
-
-                if (!isset($request->email_verification)) {
-                    $post['email_verification'] = 'off';
-                }
+                $post['email_verification'] = 'off';
 
                 if (isset($request->theme_color) && $request->color_flag == 'false') {
                     $post['theme_color'] = $request->theme_color;

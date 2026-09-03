@@ -148,7 +148,7 @@ class Utility extends Model
             "google_clender_id" => "",
             "google_calender_json_file" => "",
             "is_enabled" => "",
-            "email_verification" => "",
+            "email_verification" => "off",
             // "seo_is_enabled" => "",
             "meta_title" => "",
             "meta_image" => "",
