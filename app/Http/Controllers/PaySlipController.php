@@ -1761,6 +1761,8 @@ class PaySlipController extends Controller
             $tmp[] = round($leaveSummary['comp_off_earned'], 2);
             $tmp[] = round($leaveSummary['comp_off_used'], 2);
             $tmp[] = round($leaveSummary['comp_off_remaining'], 2);
+            $tmp[] = round($figures['net_salary'], 2);
+            $tmp[] = round($figures['gross_salary'], 2);
             $tmp['url'] = route('employee.show', Crypt::encrypt($employee->id));
             $data[] = $tmp;
         }

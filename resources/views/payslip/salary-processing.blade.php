@@ -66,6 +66,7 @@
                 </div>
             </div>
             <div class="card-body table-border-style">
+                <div class="table-responsive">
                 <table class="table" id="pc-dt-render-column-cells">
                         <thead>
                             <tr>
@@ -79,11 +80,14 @@
                                 <th>{{ __('Total Comp Off Earned') }}</th>
                                 <th>{{ __('Total Comp Off Used') }}</th>
                                 <th>{{ __('Total Remaining Comp Off') }}</th>
+                                <th>{{ __('Salary Calculation') }}</th>
+                                <th>{{ __('Salary') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                         </tbody>
                     </table>
+                </div>
             </div>
         </div>
     </div>
@@ -138,6 +142,8 @@
                                 var totalCompOffEarned = parseFloat(valueOfElement[8]) || 0;
                                 var totalCompOffUsed = parseFloat(valueOfElement[9]) || 0;
                                 var totalRemainingCompOff = parseFloat(valueOfElement[10]) || 0;
+                                var salaryCalculation = parseFloat(valueOfElement[11]) || 0;
+                                var salary = parseFloat(valueOfElement[12]) || 0;
 
                                 function formatNumber(num) {
                                     return parseFloat(num).toLocaleString('en-IN', {
@@ -162,10 +168,12 @@
                                     '<td>' + formatNumber(totalCompOffEarned) + '</td>' +
                                     '<td>' + formatNumber(totalCompOffUsed) + '</td>' +
                                     '<td>' + formatNumber(totalRemainingCompOff) + '</td>' +
+                                    '<td>' + formatNumber(salaryCalculation) + '</td>' +
+                                    '<td>' + formatNumber(salary) + '</td>' +
                                     '</tr>';
                             });
                         } else {
-                            tr = '<tr><td class="dataTables-empty" colspan="10">{{ __('No entries found') }}</td></tr>';
+                            tr = '<tr><td class="dataTables-empty" colspan="12">{{ __('No entries found') }}</td></tr>';
                         }
 
                         $('#pc-dt-render-column-cells tbody').html(tr);

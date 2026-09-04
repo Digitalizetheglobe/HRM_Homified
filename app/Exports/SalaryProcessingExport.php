@@ -100,6 +100,8 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
                 'total_comp_off_earned' => number_format($leaveSummary['comp_off_earned'], 2),
                 'total_comp_off_used' => number_format($leaveSummary['comp_off_used'], 2),
                 'total_remaining_comp_off' => number_format($leaveSummary['comp_off_remaining'], 2),
+                'salary_calculation' => number_format($figures['net_salary'], 2, '.', ''),
+                'salary' => number_format($figures['gross_salary'], 2, '.', ''),
             ];
         }
 
@@ -119,6 +121,8 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
             'Total Comp Off Earned',
             'Total Comp Off Used',
             'Total Remaining Comp Off',
+            'Salary Calculation',
+            'Salary',
         ];
     }
 
@@ -141,6 +145,8 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
             'H' => 22, // Total Comp Off Earned
             'I' => 20, // Total Comp Off Used
             'J' => 24, // Total Remaining Comp Off
+            'K' => 20, // Salary Calculation
+            'L' => 16, // Salary
         ];
     }
 
@@ -185,7 +191,7 @@ class SalaryProcessingExport implements FromCollection, WithHeadings, WithStyles
                 ],
             ],
             // Number columns (right align)
-            'B2:J' . $lastRow => [
+            'B2:L' . $lastRow => [
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_RIGHT,
                 ],

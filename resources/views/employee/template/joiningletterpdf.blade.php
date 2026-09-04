@@ -56,8 +56,11 @@
 </head>
 <body>
 @php
-    // Extract first name
-    $firstName = explode(' ', trim($employees->name))[0];
+    $fullName = trim(implode(' ', array_filter([
+        $employees->name ?? '',
+        $employees->middle_name ?? '',
+        $employees->last_name ?? '',
+    ])));
     
     // Choose gender prefix (Mr. or Ms.)
     $genderPrefix = 'Mr.';
@@ -99,7 +102,7 @@
 
     {{-- Content --}}
     <div class="content-section">
-        <p style="margin-bottom: 30px;">Dear {{ $genderPrefix }} {{ $firstName }},</p>
+        <p style="margin-bottom: 30px;">Dear {{ $genderPrefix }} {{ $fullName }},</p>
 
         <p style="margin-bottom: 20px;">We are pleased to appoint you the position of <strong>{{ !empty($employees->designation->name) ? $employees->designation->name : '' }}</strong> at <strong>Homified Consultants Private Limited</strong>.</p>
         
