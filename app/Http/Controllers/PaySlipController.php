@@ -1486,6 +1486,11 @@ class PaySlipController extends Controller
             $dateStr = $date->format('Y-m-d');
             $isFutureDay = $dateStr > $todayStr;
 
+            // Do not count days that have not occurred yet (including future week offs).
+            if ($isFutureDay) {
+                continue;
+            }
+
             $attended = isset($attendanceByDate[$dateStr]) && $isPresentRecord($attendanceByDate[$dateStr]);
 
             // Week off only if they did not work that day. Worked week-off counts as present (comp-off).
@@ -1495,11 +1500,6 @@ class PaySlipController extends Controller
                 } else {
                     $weekOffDays++;
                 }
-                continue;
-            }
-
-            // Upcoming days have no attendance yet — do not treat them as absent
-            if ($isFutureDay) {
                 continue;
             }
 
@@ -1589,9 +1589,11 @@ class PaySlipController extends Controller
             $petrolAllowanceAmount = isset($payslip->petrol_allowance) ? (float) $payslip->petrol_allowance : $petrolAllowanceAmount;
         }
 
-        $totalDeductions = $deductionForAbsent + $deductionForCasualLeave + $ptDeduction + $loanDeduction;
-        $netSalary = $grossSalary + $arrearsAmount + $petrolAllowanceAmount - $totalDeductions;
-        $payableDays = $totalDays - $absentDays - $casualLeaveDays;
+        $totalDeductions = $ptDeduction + $loanDeduction;
+        // Pay only for days already earned: present + week off + paid leave (incl. comp-off leave).
+        $payableDays = $presentDays + $weekOffDays + $paidLeaveDays;
+        $earnedSalary = $perDaySalary * $payableDays;
+        $netSalary = $earnedSalary + $arrearsAmount + $petrolAllowanceAmount - $totalDeductions;
 
         return [
             'total_days' => $totalDays,
