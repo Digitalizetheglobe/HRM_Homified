@@ -189,9 +189,15 @@ class AttendanceRuleService
             ->get();
 
         $latesInCycle = $this->latesInCurrentCycle($employeeId, $fromDate);
+        $currentMonth = Carbon::parse($fromDate)->format('Y-m');
 
         foreach ($records as $record) {
             $date = Carbon::parse($record->date)->format('Y-m-d');
+            $month = Carbon::parse($date)->format('Y-m');
+            if ($month !== $currentMonth) {
+                $latesInCycle = 0;
+                $currentMonth = $month;
+            }
             $result = $this->evaluate($employee, $date, $record->clock_in, $record->clock_out, $latesInCycle);
 
             $dirty = $record->status !== $result['status']
@@ -215,10 +221,19 @@ class AttendanceRuleService
         }
     }
 
+    /**
+     * Count late marks in the current calendar month only (before $beforeDate).
+     * Cycle resets every month, and also after the 4th late (half day) within that month.
+     */
     public function latesInCurrentCycle(int $employeeId, string $beforeDate): int
     {
+        $before = Carbon::parse($beforeDate)->startOfDay();
+        $monthStart = $before->copy()->startOfMonth()->format('Y-m-d');
+        $beforeStr = $before->format('Y-m-d');
+
         $lastReset = AttendanceEmployee::where('employee_id', $employeeId)
-            ->where('date', '<', $beforeDate)
+            ->where('date', '>=', $monthStart)
+            ->where('date', '<', $beforeStr)
             ->where(function ($query) {
                 $query->where('late_cycle_number', 4)
                     ->orWhere('status_reason', AttendanceEmployee::REASON_HALF_DAY_LATE_MARK);
@@ -228,7 +243,8 @@ class AttendanceRuleService
             ->first();
 
         $query = AttendanceEmployee::where('employee_id', $employeeId)
-            ->where('date', '<', $beforeDate)
+            ->where('date', '>=', $monthStart)
+            ->where('date', '<', $beforeStr)
             ->whereNotNull('clock_in')
             ->where('clock_in', '!=', '')
             ->where('clock_in', '!=', '00:00:00')
@@ -310,10 +326,16 @@ class AttendanceRuleService
     public function evaluateSequence(Employee $employee, iterable $attendances): array
     {
         $latesInCycle = 0;
+        $currentMonth = null;
         $mapped = [];
 
         foreach ($attendances as $attendance) {
             $date = Carbon::parse(is_array($attendance) ? $attendance['date'] : $attendance->date)->format('Y-m-d');
+            $month = Carbon::parse($date)->format('Y-m');
+            if ($currentMonth !== null && $currentMonth !== $month) {
+                $latesInCycle = 0;
+            }
+            $currentMonth = $month;
             $clockIn = is_array($attendance) ? ($attendance['clock_in'] ?? null) : $attendance->clock_in;
             $clockOut = is_array($attendance) ? ($attendance['clock_out'] ?? null) : $attendance->clock_out;
             $storedStatus = is_array($attendance) ? ($attendance['status'] ?? null) : $attendance->status;

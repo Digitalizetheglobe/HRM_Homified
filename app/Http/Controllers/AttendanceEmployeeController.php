@@ -2594,9 +2594,15 @@ namespace App\Http\Controllers;
                 $from = Carbon::parse($first->date)->format('Y-m-d');
                 $lates = $service->latesInCurrentCycle((int) $employeeId, $from);
                 $employee = $first->employee;
+                $currentMonth = Carbon::parse($from)->format('Y-m');
 
                 foreach ($sorted as $attendance) {
                     $date = Carbon::parse($attendance->date)->format('Y-m-d');
+                    $month = Carbon::parse($date)->format('Y-m');
+                    if ($month !== $currentMonth) {
+                        $lates = 0;
+                        $currentMonth = $month;
+                    }
                     $evaluated = $service->evaluate(
                         $employee ?? new Employee(),
                         $date,

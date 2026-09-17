@@ -10,7 +10,7 @@ class RecalculateAttendanceShiftRules extends Command
 {
     protected $signature = 'attendance:recalculate-shift-rules {--employee= : Recalculate a single employee ID}';
 
-    protected $description = 'Recalculate shift-based late marks, late-cycle half days, and attendance status reasons';
+    protected $description = 'Recalculate month-wise late marks, late-cycle half days, and attendance status reasons';
 
     public function handle(AttendanceRuleService $service): int
     {
