@@ -923,9 +923,14 @@ class ReportController extends Controller
     public function getemployee(Request $request)
     {
         $terminatedIds = \App\Models\Termination::pluck('employee_id')->toArray();
+        $employeeStatus = $request->get('employee_status') === 'inactive' ? 'inactive' : 'active';
 
         $query = Employee::where('created_by', '=', \Auth::user()->creatorId())
-            ->whereNotIn('id', $terminatedIds)
+            ->when($employeeStatus === 'inactive', function ($query) use ($terminatedIds) {
+                $query->whereIn('id', $terminatedIds ?: [0]);
+            }, function ($query) use ($terminatedIds) {
+                $query->whereNotIn('id', $terminatedIds);
+            })
             ->whereHas('user', function($q) {
                 $q->where('type', 'employee');
             });

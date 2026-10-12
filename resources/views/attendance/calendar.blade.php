@@ -42,53 +42,44 @@
             <div class="card">
                 <div class="card-body">
                     {{ Form::open(['route' => ['attendance.calendar'], 'method' => 'get', 'id' => 'attendance_calendar_filter']) }}
-                    <div class="row align-items-center justify-content-end">
-                        <div class="col-xl-10">
-                            <div class="row">
-                                @if (\Auth::user()->type != 'employee' || ($isHR && !request()->has('own')))
-                                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12">
-                                        <div class="btn-box">
-                                            {{ Form::label('employee_id', __('Employee'), ['class' => 'form-label']) }}
-                                            <select name="employee_id" class="form-control select2" id="employee_id">
-                                                <option value="">{{ __('Select Employee') }}</option>
-                                                @foreach($allEmployees as $employee)
-                                                    <option value="{{ $employee->id }}" {{ ($selectedEmployee && $selectedEmployee->id == $employee->id) ? 'selected' : '' }}>
-                                                        {{ \Auth::user()->employeeIdFormat($employee->employee_id) }} - {{ $employee->full_name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                    </div>
-                                @endif
-                                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-12">
-                                    <div class="btn-box">
-                                        {{ Form::label('month', __('Month'), ['class' => 'form-label']) }}
-                                        <select name="month" class="form-control select" id="month">
-                                            @foreach($months as $key => $name)
-                                                <option value="{{ $key }}" {{ $currentMonth == $key ? 'selected' : '' }}>{{ __($name) }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-12">
-                                    <div class="btn-box">
-                                        {{ Form::label('year', __('Year'), ['class' => 'form-label']) }}
-                                        <select name="year" class="form-control select" id="year">
-                                            @foreach($years as $year)
-                                                <option value="{{ $year }}" {{ $currentYear == $year ? 'selected' : '' }}>{{ $year }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-auto mt-4">
-                                    <a href="#" class="btn btn-sm btn-primary" onclick="document.getElementById('attendance_calendar_filter').submit(); return false;">
-                                        <span class="btn-inner--icon"><i class="ti ti-search"></i></span>
-                                    </a>
-                                    <a href="{{ route('attendance.calendar') }}" class="btn btn-sm btn-danger">
-                                        <span class="btn-inner--icon"><i class="ti ti-trash-off text-white-off"></i></span>
-                                    </a>
-                                </div>
+                    <div class="calendar-filter-line">
+                        @if (\Auth::user()->type != 'employee' || ($isHR && !request()->has('own')))
+                            @include('partials.employee_status_toggle')
+                            <div class="btn-box calendar-filter-employee">
+                                {{ Form::label('employee_id', __('Employee'), ['class' => 'form-label']) }}
+                                <select name="employee_id" class="form-control select2" id="employee_id">
+                                    <option value="">{{ __('Select Employee') }}</option>
+                                    @foreach($allEmployees as $employee)
+                                        <option value="{{ $employee->id }}" {{ ($selectedEmployee && $selectedEmployee->id == $employee->id) ? 'selected' : '' }}>
+                                            {{ \Auth::user()->employeeIdFormat($employee->employee_id) }} - {{ $employee->full_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
+                        @endif
+                        <div class="btn-box calendar-filter-month">
+                            {{ Form::label('month', __('Month'), ['class' => 'form-label']) }}
+                            <select name="month" class="form-control select" id="month">
+                                @foreach($months as $key => $name)
+                                    <option value="{{ $key }}" {{ $currentMonth == $key ? 'selected' : '' }}>{{ __($name) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="btn-box calendar-filter-year">
+                            {{ Form::label('year', __('Year'), ['class' => 'form-label']) }}
+                            <select name="year" class="form-control select" id="year">
+                                @foreach($years as $year)
+                                    <option value="{{ $year }}" {{ $currentYear == $year ? 'selected' : '' }}>{{ $year }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="calendar-filter-actions">
+                            <a href="#" class="btn btn-sm btn-primary" onclick="document.getElementById('attendance_calendar_filter').submit(); return false;">
+                                <span class="btn-inner--icon"><i class="ti ti-search"></i></span>
+                            </a>
+                            <a href="{{ route('attendance.calendar') }}" class="btn btn-sm btn-danger">
+                                <span class="btn-inner--icon"><i class="ti ti-trash-off text-white-off"></i></span>
+                            </a>
                         </div>
                     </div>
                     {{ Form::close() }}
@@ -107,10 +98,10 @@
                             </div>
                             <div class="col-md-6 mt-2">
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{{ route('attendance.calendar', ['employee_id' => $selectedEmployee->id, 'month' => $previousMonth, 'year' => $previousYear]) }}" class="btn btn-primary d-inline-flex align-items-center">
+                                    <a href="{{ route('attendance.calendar', array_filter(['employee_id' => $selectedEmployee->id, 'month' => $previousMonth, 'year' => $previousYear, 'employee_status' => request('employee_status') === 'inactive' ? 'inactive' : null])) }}" class="btn btn-primary d-inline-flex align-items-center">
                                         <i class="ti ti-chevron-left me-1"></i> {{ __('Previous') }}
                                     </a>
-                                    <a href="{{ route('attendance.calendar', ['employee_id' => $selectedEmployee->id, 'month' => $nextMonth, 'year' => $nextYear]) }}" class="btn btn-primary d-inline-flex align-items-center">
+                                    <a href="{{ route('attendance.calendar', array_filter(['employee_id' => $selectedEmployee->id, 'month' => $nextMonth, 'year' => $nextYear, 'employee_status' => request('employee_status') === 'inactive' ? 'inactive' : null])) }}" class="btn btn-primary d-inline-flex align-items-center">
                                         {{ __('Next') }} <i class="ti ti-chevron-right ms-1"></i>
                                     </a>
                                 </div>
@@ -356,6 +347,35 @@
     </div>
 
     <style>
+        .calendar-filter-line {
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            flex-wrap: nowrap;
+            gap: 12px;
+        }
+        .calendar-filter-line .btn-box {
+            margin: 0;
+            min-width: 0;
+        }
+        .calendar-filter-employee {
+            flex: 1 1 240px;
+            max-width: 320px;
+        }
+        .calendar-filter-month,
+        .calendar-filter-year {
+            flex: 0 0 140px;
+        }
+        .calendar-filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 0 0 auto;
+            padding-bottom: 2px;
+        }
+        .calendar-filter-line .select2-container {
+            width: 100% !important;
+        }
         .calendar-grid-wrap {
             width: 100%;
             max-width: 100%;

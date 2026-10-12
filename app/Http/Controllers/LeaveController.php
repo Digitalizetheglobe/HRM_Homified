@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\Leave as LocalLeave;
+use App\Models\Termination;
 use App\Models\LeaveType;
 use App\Mail\LeaveActionSend;
 use App\Models\Utility;
@@ -148,6 +149,13 @@ class LeaveController extends Controller
                 
                 } else {
                     $query->where('created_by', '=', \Auth::user()->creatorId());
+                }
+
+                $terminatedEmployeeIds = Termination::pluck('employee_id')->filter()->unique()->values()->all();
+                if ($request->get('employee_status') === 'inactive') {
+                    $query->whereIn('employee_id', $terminatedEmployeeIds ?: [0]);
+                } elseif (!empty($terminatedEmployeeIds)) {
+                    $query->whereNotIn('employee_id', $terminatedEmployeeIds);
                 }
 
                 // Apply Month and Year filters

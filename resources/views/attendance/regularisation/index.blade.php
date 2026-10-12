@@ -20,6 +20,19 @@
 @endsection
 
 @section('content')
+    @if (!request('own') && (\Auth::user()->type == 'company' || \Auth::user()->type == 'super admin' || Gate::check('attendance.regularisation.view.all')))
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="card">
+                    <div class="card-body">
+                        {{ Form::open(['route' => ['attendance-regularisation.index'], 'method' => 'get', 'id' => 'regularisation_status_filter']) }}
+                        @include('partials.employee_status_toggle')
+                        {{ Form::close() }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
     <div class="row">
         <div class="col-xl-12">
             <div class="card">

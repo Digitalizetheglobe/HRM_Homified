@@ -8,6 +8,7 @@ use App\Models\EmployeeLocationLog;
 use App\Models\AttendanceEmployee;
 use App\Models\Branch;
 use App\Models\Department;
+use App\Models\Termination;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -29,8 +30,15 @@ class EmployeeTrackingController extends Controller
         $branches = Branch::where('created_by', Auth::user()->creatorId())->pluck('name', 'id')->toArray();
         $departments = Department::where('created_by', Auth::user()->creatorId())->pluck('name', 'id')->toArray();
 
-        // Get list of active employees
+        $terminatedEmployeeIds = Termination::pluck('employee_id')->filter()->unique()->values()->all();
+        $employeeStatus = $request->get('employee_status') === 'inactive' ? 'inactive' : 'active';
+
         $employees = Employee::where('created_by', Auth::user()->creatorId())
+            ->when($employeeStatus === 'inactive', function ($query) use ($terminatedEmployeeIds) {
+                $query->whereIn('id', $terminatedEmployeeIds ?: [0]);
+            }, function ($query) use ($terminatedEmployeeIds) {
+                $query->whereNotIn('id', $terminatedEmployeeIds);
+            })
             ->whereHas('user', function ($query) {
                 $query->where('type', 'employee');
             })

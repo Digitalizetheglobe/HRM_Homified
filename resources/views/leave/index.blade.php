@@ -182,7 +182,10 @@
                     <div class="row align-items-end justify-content-center">
                         <div class="col-xl-10">
                             <div class="row align-items-end">
-                                <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12">
+                                <div class="col-auto mb-3 mb-xl-0">
+                                    @include('partials.employee_status_toggle')
+                                </div>
+                                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12">
                                     <div class="btn-box">
                                         {{ Form::label('month', __('Month'), ['class' => 'form-label']) }}
                                         <select class="form-select" id="month_filter" name="month">
@@ -196,7 +199,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12">
+                                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-12">
                                     <div class="btn-box">
                                         {{ Form::label('year', __('Year'), ['class' => 'form-label']) }}
                                         <select class="form-select" id="year_filter" name="year">

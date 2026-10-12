@@ -42,8 +42,14 @@ namespace App\Http\Controllers;
                 $terminatedEmployeeIds = Termination::pluck('employee_id')->toArray();
 
                 // Get employees for filter dropdown - exclude Director, Hr, and terminated users
+                $employeeStatus = $request->get('employee_status') === 'inactive' ? 'inactive' : 'active';
+
                 $employees = Employee::where('created_by', \Auth::user()->creatorId())
-                    ->whereNotIn('id', $terminatedEmployeeIds)
+                    ->when($employeeStatus === 'inactive', function ($query) use ($terminatedEmployeeIds) {
+                        $query->whereIn('id', $terminatedEmployeeIds ?: [0]);
+                    }, function ($query) use ($terminatedEmployeeIds) {
+                        $query->whereNotIn('id', $terminatedEmployeeIds);
+                    })
                     ->whereHas('user', function($query) {
                         $query->where('type', 'employee');
                     })
@@ -103,6 +109,11 @@ namespace App\Http\Controllers;
                     $this->decorateAttendanceList($attendanceEmployee);
                 } else {
                     $employee = Employee::select('id')->where('created_by', \Auth::user()->creatorId())
+                        ->when($employeeStatus === 'inactive', function ($query) use ($terminatedEmployeeIds) {
+                            $query->whereIn('id', $terminatedEmployeeIds ?: [0]);
+                        }, function ($query) use ($terminatedEmployeeIds) {
+                            $query->whereNotIn('id', $terminatedEmployeeIds);
+                        })
                         ->whereHas('user', function($query) {
                             $query->where('type', 'employee');
                         });
@@ -1747,9 +1758,15 @@ namespace App\Http\Controllers;
                 // Get terminated employee IDs
                 $terminatedEmployeeIds = Termination::pluck('employee_id')->toArray();
                 
-                // Exclude terminated employees and non-employee users (Director, Hr) from the list
+                $employeeStatus = $request->get('employee_status') === 'inactive' ? 'inactive' : 'active';
+
+                // Active list excludes terminated employees. Inactive list is terminated employees only.
                 $allEmployees = Employee::where('created_by', \Auth::user()->creatorId())
-                    ->whereNotIn('id', $terminatedEmployeeIds)
+                    ->when($employeeStatus === 'inactive', function ($query) use ($terminatedEmployeeIds) {
+                        $query->whereIn('id', $terminatedEmployeeIds ?: [0]);
+                    }, function ($query) use ($terminatedEmployeeIds) {
+                        $query->whereNotIn('id', $terminatedEmployeeIds);
+                    })
                     ->whereHas('user', function($query) {
                         $query->where('type', 'employee');
                     })
@@ -1766,7 +1783,7 @@ namespace App\Http\Controllers;
                 // For company users - check if employee is selected
                 else {
                     if ($request->has('employee_id') && $request->employee_id) {
-                        $selectedEmployee = Employee::find($request->employee_id);
+                        $selectedEmployee = $allEmployees->firstWhere('id', (int) $request->employee_id);
                         if ($selectedEmployee) {
                             $employees = [$selectedEmployee];
                         }

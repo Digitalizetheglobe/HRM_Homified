@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AttendanceRegularisation;
 use App\Models\AttendanceEmployee;
 use App\Models\Employee;
+use App\Models\Termination;
 use App\Models\User;
 use App\Models\Utility;
 use App\Notifications\AttendanceRegularisationNotification;
@@ -22,8 +23,15 @@ class AttendanceRegularisationController extends Controller
         $isOwn = request()->has('own') && request()->query('own') == 1;
 
         if (!$isOwn && (\Auth::user()->can('attendance.regularisation.view.all') || in_array(\Auth::user()->type, ['company', 'super admin']))) {
-            // User with view all permission or Company user - show all regularisations
+            $terminatedEmployeeIds = Termination::pluck('employee_id')->filter()->unique()->values()->all();
+            $employeeStatus = request('employee_status') === 'inactive' ? 'inactive' : 'active';
+
             $regularisations = AttendanceRegularisation::where('created_by', \Auth::user()->creatorId())
+                ->when($employeeStatus === 'inactive', function ($query) use ($terminatedEmployeeIds) {
+                    $query->whereIn('employee_id', $terminatedEmployeeIds ?: [0]);
+                }, function ($query) use ($terminatedEmployeeIds) {
+                    $query->whereNotIn('employee_id', $terminatedEmployeeIds);
+                })
                 ->with('employee')
                 ->orderBy('created_at', 'desc')
                 ->get();

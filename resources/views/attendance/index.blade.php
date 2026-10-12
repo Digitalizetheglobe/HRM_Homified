@@ -150,7 +150,11 @@
             $.ajax({
                 url: '{{ route("monthly.getemployee") }}',
                 type: 'POST',
-                data: { department_id: deptId, _token: '{{ csrf_token() }}' },
+                data: {
+                    department_id: deptId,
+                    employee_status: $('input[name="employee_status"]:checked').val() || 'active',
+                    _token: '{{ csrf_token() }}'
+                },
                 success: function (data) {
                     var html = '<option value="">{{ __("All Employees") }}</option>';
                     $.each(data, function (key, value) {
@@ -347,6 +351,7 @@
                         {{-- Row 2: Cascading Branch → Dept → Employee --}}
                         @if (\Auth::user()->type != 'employee' || ($isHR && !request()->has('own')))
                         <div class="filter-row align-items-end flex-wrap" style="justify-content: flex-end;">
+                            @include('partials.employee_status_toggle')
 
                             {{-- Step 1: Branch --}}
                             <div class="filter-group">

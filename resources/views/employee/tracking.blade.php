@@ -16,6 +16,31 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     
     <style>
+        .tracking-filter-line {
+            display: flex;
+            align-items: flex-end;
+            flex-wrap: nowrap;
+            gap: 12px;
+        }
+        .tracking-filter-employee {
+            flex: 1 1 260px;
+            max-width: 360px;
+            min-width: 0;
+        }
+        .tracking-filter-date {
+            flex: 0 0 180px;
+        }
+        .tracking-filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 0 0 auto;
+            margin-left: auto;
+            padding-bottom: 2px;
+        }
+        .tracking-filter-line .select2-container {
+            width: 100% !important;
+        }
         /* ── Select2 Custom Styling ────────────────── */
         .select2-container--default .select2-selection--single {
             border: 1.5px solid #e2e8f0 !important;
@@ -342,8 +367,11 @@
                     </div>
                 </div>
                 <div class="card-body py-3">
-                    <div class="row align-items-center g-3">
-                        <div class="col-xl-4 col-md-5">
+                    <div class="tracking-filter-line">
+                        <form method="get" action="{{ route('employee.tracking') }}" id="tracking_status_filter" class="mb-0">
+                            @include('partials.employee_status_toggle')
+                        </form>
+                        <div class="tracking-filter-employee">
                             <label for="employee_select" class="form-label mb-1">{{ __('Select Employee') }}</label>
                             <select id="employee_select" class="form-control select">
                                 <option value="" disabled selected>{{ __('Select an Employee') }}</option>
@@ -354,11 +382,11 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-xl-3 col-md-4">
+                        <div class="tracking-filter-date">
                             <label for="date_select" class="form-label mb-1">{{ __('Select Tracking Date') }}</label>
                             <input type="date" id="date_select" class="form-control" value="{{ date('Y-m-d') }}">
                         </div>
-                        <div class="col-xl-5 col-md-3 d-flex align-items-end justify-content-md-end gap-2 mt-4 mt-md-0">
+                        <div class="tracking-filter-actions">
                             <button type="button" id="refresh_btn" class="btn btn-primary d-flex align-items-center gap-2">
                                 <i class="ti ti-refresh"></i>{{ __('Refresh Data') }}
                             </button>
