@@ -36,7 +36,7 @@ class AuthServiceProvider extends ServiceProvider
                     'Branch', 'Department', 'Designation', 'Leave Type', 'Document Type', 'Payslip Type',
                     'Allowance Option', 'Loan Option', 'Deduction Option', 'Goal Type', 'Training Type',
                     'Award Type', 'Termination Type', 'Job Category', 'Job Stage', 'Performance Type',
-                    'Competencies', 'Expense Type', 'Income Type', 'Payment Type', 'Contract Type'
+                    'Competencies', 'Expense Type', 'Income Type', 'Payment Type', 'Contract Type', 'Punch Location'
                 ];
                 
                 foreach ($setupModules as $module) {

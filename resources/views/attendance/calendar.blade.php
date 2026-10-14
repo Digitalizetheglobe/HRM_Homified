@@ -119,6 +119,7 @@
                                 <div class="d-flex align-items-center"><span class="badge bg-danger-light me-2 border border-danger" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Absent') }}</div>
                                 <div class="d-flex align-items-center"><span class="badge bg-pink-light me-2 border" style="width:15px;height:15px;display:inline-block;border-radius:3px;border-color:#e83e8c !important;">&nbsp;</span> {{ __('Leave') }}</div>
                                 <div class="d-flex align-items-center"><span class="badge bg-secondary-light me-2 border border-secondary" style="width:15px;height:15px;display:inline-block;border-radius:3px;">&nbsp;</span> {{ __('Week Off') }}</div>
+                                <div class="d-flex align-items-center"><span class="badge me-2" style="width:15px;height:15px;display:inline-block;border-radius:3px;background:#fff;box-shadow:inset 0 0 0 3px #e6a817;">&nbsp;</span> {{ __('Status changed') }}</div>
                             </div>
                         </div>
 
@@ -186,6 +187,8 @@
                                         $class = '';
                                         $title = '';
                                         
+                                        $history = is_array($dayData) ? ($dayData['status_history'] ?? []) : [];
+                                        $editedClass = !empty($history) ? 'status-edited' : '';
                                         if($dayData) {
                                             $reason = $dayData['status_reason'] ?? null;
                                             $statusLabel = $dayData['status_label'] ?? '';
@@ -225,6 +228,24 @@
                                                     $title = __('Week Off');
                                                     break;
                                             }
+                                            if (!empty($dayData['late_cycle_number'])) {
+                                                $cycleNo = (int) $dayData['late_cycle_number'];
+                                                if (!str_contains($title, 'Late Mark ' . $cycleNo)) {
+                                                    $title .= "\n" . __('Late Mark') . ' ' . $cycleNo;
+                                                }
+                                            }
+                                            if (!empty($history)) {
+                                                $title .= "\n" . __('Status changes:');
+                                                foreach ($history as $index => $change) {
+                                                    $title .= "\n" . ($index + 1) . '. ' . $change['from'] . ' → ' . $change['to'];
+                                                    if (!empty($change['at'])) {
+                                                        $title .= ' (' . $change['at'] . ')';
+                                                    }
+                                                    if (!empty($change['remark'])) {
+                                                        $title .= ' — ' . $change['remark'];
+                                                    }
+                                                }
+                                            }
                                         }
                                         
                                         $isToday = $dateString == date('Y-m-d');
@@ -245,9 +266,12 @@
                                                 $dayData['clock_in'] ?? '',
                                                 $dayData['clock_out'] ?? ''
                                             );
+                                            if (!empty($history)) {
+                                                $dataAttrs .= ' data-history="' . e(json_encode($history)) . '"';
+                                            }
                                         }
                                     @endphp
-                                    <div class="calendar-day {{ $class }} {{ $isToday ? 'today' : '' }} {{ $editClass }}" title="{{ $title }}" {!! $dataAttrs !!}>
+                                    <div class="calendar-day {{ $class }} {{ $isToday ? 'today' : '' }} {{ $editClass }} {{ $editedClass }}" title="{{ $title }}" {!! $dataAttrs !!}>
                                         <div class="day-number">{{ $day }}</div>
                                         @if($dayData && !empty($dayData['earned_comp_off']))
                                             @if(!empty($dayData['used_comp_off']))
@@ -264,6 +288,9 @@
                                             <div class="day-info">
                                                 @if($dayData['type'] == 'present' || $dayData['type'] == 'late' || $dayData['type'] == 'half_day' || $dayData['type'] == 'single_punch')
                                                     <small class="d-block text-center fw-semibold">{{ $dayData['status_label'] ?? '' }}</small>
+                                                    @if(!empty($dayData['late_cycle_number']) && !str_contains((string) ($dayData['status_label'] ?? ''), 'Late Mark ' . (int) $dayData['late_cycle_number']))
+                                                        <small class="d-block text-center fw-bold late-cycle-note">{{ __('Late Mark') }} {{ (int) $dayData['late_cycle_number'] }}</small>
+                                                    @endif
                                                     <small class="d-block text-center">{{ !empty($dayData['clock_in']) && $dayData['clock_in'] != '00:00:00' ? date('H:i', strtotime($dayData['clock_in'])) : '' }}</small>
                                                     @if(($dayData['type'] == 'present' || $dayData['type'] == 'late' || $dayData['type'] == 'half_day') && !empty($dayData['clock_out']) && $dayData['clock_out'] != '00:00:00')
                                                         <small class="d-block text-center">{{ date('H:i', strtotime($dayData['clock_out'])) }}</small>
@@ -272,6 +299,14 @@
                                                     <small class="d-block text-center text-truncate">{{ $dayData['leave_type'] }}</small>
                                                 @else
                                                     <small class="d-block text-center">{{ __(ucfirst(str_replace('_', ' ', $dayData['type']))) }}</small>
+                                                @endif
+                                                @if(!empty($history))
+                                                    <span class="status-change-note" title="{{ collect($history)->map(function ($change, $index) { return ($index + 1) . '. ' . $change['from'] . ' → ' . $change['to']; })->implode("\n") }}">
+                                                        {{ __('Was') }}: {{ $history[0]['from'] }}
+                                                        @if(count($history) > 1)
+                                                            · {{ count($history) }}
+                                                        @endif
+                                                    </span>
                                                 @endif
                                             </div>
                                         @endif
@@ -336,7 +371,16 @@
                                 <input type="time" class="form-control" name="clock_out" id="edit_clock_out">
                             </div>
                         </div>
+
+                        <div class="form-group">
+                            <label for="edit_remark" class="form-label">{{ __('Remark') }}</label>
+                            <textarea class="form-control" name="remark" id="edit_remark" rows="3" maxlength="1000" placeholder="{{ __('Why was this status changed?') }}"></textarea>
+                        </div>
                     </form>
+                    <div id="statusHistoryBox" class="status-history-box" style="display:none;">
+                        <div class="status-history-title">{{ __('Status changes') }}</div>
+                        <ol id="statusHistoryList" class="status-history-list"></ol>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ __('Close') }}</button>
@@ -415,7 +459,7 @@
         .calendar-day-head:last-child { border-right: none; }
         
         .calendar-day {
-            min-height: 100px;
+            min-height: 118px;
             min-width: 0;
             padding: 10px;
             border-right: 1px solid #eee;
@@ -462,6 +506,54 @@
             margin-top: 5px;
             overflow-wrap: anywhere;
             word-break: break-word;
+        }
+        .calendar-day.status-edited {
+            box-shadow: inset 0 0 0 3px #e6a817;
+        }
+        .late-cycle-note {
+            color: #9a3412;
+            background: rgba(253, 126, 20, 0.28);
+            border-radius: 4px;
+            padding: 0 4px;
+            margin-top: 2px;
+        }
+        .status-change-note {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 1px 4px;
+            border-radius: 4px;
+            background: rgba(230, 168, 23, 0.35);
+            color: #7a4e00;
+            font-size: 0.68rem;
+            font-weight: 700;
+            line-height: 1.3;
+            max-width: 100%;
+        }
+        .status-history-box {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #fff8e8;
+            border: 1px solid #f0d48a;
+        }
+        .status-history-title {
+            font-weight: 700;
+            color: #7a4e00;
+            margin-bottom: 6px;
+        }
+        .status-history-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #5c4308;
+            font-size: 0.9rem;
+        }
+        .status-history-list li + li {
+            margin-top: 4px;
+        }
+        .status-history-remark {
+            margin-top: 2px;
+            color: #3f3210;
+            font-size: 0.85rem;
         }
         
         @media (max-width: 768px) {
@@ -533,12 +625,37 @@
                 // Clear previous times before changing status
                 $('#edit_clock_in').val('');
                 $('#edit_clock_out').val('');
+                $('#edit_remark').val('');
 
                 if (inTime && inTime !== '00:00:00') $('#edit_clock_in').val(inTime);
                 if (outTime && outTime !== '00:00:00') $('#edit_clock_out').val(outTime);
 
                 // Triggering change will automatically set defaults if it's Present/Half Day and times are empty
                 $('#edit_status').val(uiStatus).trigger('change');
+
+                var history = $(this).data('history') || [];
+                var $historyBox = $('#statusHistoryBox');
+                var $historyList = $('#statusHistoryList');
+                $historyList.empty();
+                if (history.length) {
+                    history.forEach(function (change) {
+                        var line = change.from + ' → ' + change.to;
+                        if (change.at) {
+                            line += ' · ' + change.at;
+                        }
+                        if (change.by) {
+                            line += ' · ' + change.by;
+                        }
+                        var $item = $('<li>').text(line);
+                        if (change.remark) {
+                            $item.append($('<div class="status-history-remark">').text(change.remark));
+                        }
+                        $historyList.append($item);
+                    });
+                    $historyBox.show();
+                } else {
+                    $historyBox.hide();
+                }
 
                 var modal = new bootstrap.Modal(document.getElementById('editAttendanceModal'));
                 modal.show();
@@ -558,7 +675,8 @@
                         date: $('#edit_date').val(),
                         status: $('#edit_status').val(),
                         clock_in: $('#edit_clock_in').val(),
-                        clock_out: $('#edit_clock_out').val()
+                        clock_out: $('#edit_clock_out').val(),
+                        remark: $('#edit_remark').val()
                     },
                     success: function(response) {
                         if (response.success) {

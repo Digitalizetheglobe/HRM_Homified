@@ -14,6 +14,7 @@ class AttendanceAudit extends Model
         'date',
         'previous_status',
         'new_status',
+        'remark',
         'modified_by',
     ];
 

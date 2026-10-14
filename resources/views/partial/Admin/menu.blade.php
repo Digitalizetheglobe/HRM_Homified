@@ -171,7 +171,7 @@
                 </li>
             @endif
 
-            @if (Gate::check('Manage User') && \Auth::user()->type != 'super admin')
+            <!-- @if (Gate::check('Manage User') && \Auth::user()->type != 'super admin')
                 <li class="dash-item {{ Request::segment(1) == 'user' ? 'active' : '' }}">
                     <a href="{{ route('user.index') }}"
                        class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
@@ -193,7 +193,7 @@
                         <span class="dash-mtext flex-grow">{{ __('Role') }}</span>
                     </a>
                 </li>
-            @endif
+            @endif -->
 
             <!-- Attendance -->
             @if (Gate::check('attendance.calendar.view.own') || Gate::check('attendance.calendar.view.all') || 
@@ -273,6 +273,14 @@
                             <li class="dash-item">
                                 <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('attendanceemployee.bulkattendance') }}">
                                     {{ __('Bulk Attendance') }}
+                                </a>
+                            </li>
+                        @endif
+
+                        @if (\Auth::user()->hasCompanyAccess() || \Auth::user()->isHR() || Gate::check('Manage Punch Location'))
+                            <li class="dash-item {{ Request::segment(1) == 'punchlocation' ? 'active' : '' }}">
+                                <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('punchlocation.index') }}">
+                                    {{ __('Punch Locations') }}
                                 </a>
                             </li>
                         @endif
@@ -718,75 +726,20 @@
                 </li>
             @endif -->
 
-            <!-- Exit Formalities -->
-            @if(Gate::check('exit.resignation.view.own') || Gate::check('exit.resignation.view.all') || Gate::check('exit.termination.view.own') || Gate::check('exit.termination.view.all'))
-            @php
-                $resOwn = !\Auth::user()->hasCompanyAccess() && Gate::check('exit.resignation.view.own');
-                $resAll = Gate::check('exit.resignation.view.all');
-                $termOwn = !\Auth::user()->hasCompanyAccess() && Gate::check('exit.termination.view.own');
-                $termAll = Gate::check('exit.termination.view.all');
-                $exitCount = ($resOwn ? 1 : 0) + ($resAll ? 1 : 0) + ($termOwn ? 1 : 0) + ($termAll ? 1 : 0);
-            @endphp
-            
-            @if($exitCount > 1)
-            <li class="dash-item dash-hasmenu {{ Request::segment(1) == 'resignation' || Request::segment(1) == 'termination' ? 'dash-trigger active' : '' }}">
-                <a href="#!" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
-                    <span class="dash-micon shadow-none" style="background: none;">
-                        <i class="ti ti-user-x text-white text-[22px]"></i>
-                    </span>
-                    <span class="dash-mtext flex-grow">{{ __('Exit Formalities') }}</span>
-                    <span class="dash-arrow"><i data-feather="chevron-right"></i></span>
-                </a>
-                <ul class="dash-submenu">
-                    @if($resOwn)
-                        <li class="dash-item {{ Request::segment(1) == 'resignation' && request('own') ? 'active' : '' }}">
-                            <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('resignation.index') }}?own=1">
-                                {{ __('My Resignation') }}
-                            </a>
-                        </li>
-                    @endif
-                    @if($resAll)
-                        <li class="dash-item {{ Request::segment(1) == 'resignation' && !request('own') ? 'active' : '' }}">
-                            <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('resignation.index') }}">
-                                {{ \Auth::user()->hasCompanyAccess() ? __('Resignation') : __('All Employees Resignation') }}
-                            </a>
-                        </li>
-                    @endif
-                    
-                    @if($termOwn)
-                        <li class="dash-item {{ Request::segment(1) == 'termination' && request('own') ? 'active' : '' }}">
-                            <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('termination.index') }}?own=1">
-                                {{ __('My Termination') }}
-                            </a>
-                        </li>
-                    @endif
-                    @if($termAll)
-                        <li class="dash-item {{ Request::segment(1) == 'termination' && !request('own') ? 'active' : '' }}">
-                            <a class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-md" href="{{ route('termination.index') }}">
-                                {{ \Auth::user()->hasCompanyAccess() ? __('Termination') : __('All Employees Termination') }}
-                            </a>
-                        </li>
-                    @endif
-                </ul>
-            </li>
-            @elseif($exitCount == 1)
-                <li class="dash-item {{ Request::segment(1) == 'resignation' || Request::segment(1) == 'termination' ? 'active' : '' }}">
-                    @if($resOwn)
-                        <a href="{{ route('resignation.index').'?own=1' }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
-                    @elseif($resAll)
-                        <a href="{{ route('resignation.index') }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
-                    @elseif($termOwn)
-                        <a href="{{ route('termination.index').'?own=1' }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
-                    @else
-                        <a href="{{ route('termination.index') }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
-                    @endif
+            <!-- Termination -->
+            @if(Gate::check('exit.termination.view.own') || Gate::check('exit.termination.view.all'))
+                @php
+                    $termOwn = !\Auth::user()->hasCompanyAccess() && Gate::check('exit.termination.view.own');
+                    $termAll = Gate::check('exit.termination.view.all');
+                @endphp
+                <li class="dash-item {{ Request::segment(1) == 'termination' ? 'active' : '' }}">
+                    <a href="{{ $termAll ? route('termination.index') : route('termination.index').'?own=1' }}" class="dash-link text-white hover:text-white hover:bg-[#001a3b] text-base flex items-center w-full">
                         <span class="dash-micon shadow-none" style="background: none;">
                             <i class="ti ti-user-x text-white text-[22px]"></i>
                         </span>
-                        <span class="dash-mtext flex-grow">{{ __('Exit Formalities') }}</span>
+                        <span class="dash-mtext flex-grow">{{ $termOwn && !$termAll ? __('My Termination') : __('Termination') }}</span>
                     </a>
                 </li>
-            @endif
             @endif
 
 

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Mail\TerminationSend;
-use App\Models\Resignation;
 use App\Models\Termination;
 use App\Models\TerminationType;
 use App\Models\Utility;
@@ -41,14 +40,6 @@ class TerminationController extends Controller
     {
         if(\Auth::user()->type == 'company' || \Auth::user()->can('exit.termination.create.all'))
         {
-            $approvedResignedEmployeeIds = Resignation::where('created_by', \Auth::user()->creatorId())
-                ->where('status', 'approved')
-                ->pluck('employee_id')
-                ->unique()
-                ->filter()
-                ->values();
-
-            // Get employee IDs that already have terminations
             $terminatedEmployeeIds = Termination::where('created_by', \Auth::user()->creatorId())
                 ->pluck('employee_id')
                 ->unique()
@@ -56,10 +47,12 @@ class TerminationController extends Controller
                 ->values()
                 ->toArray();
 
-            // Get employees with approved resignations but exclude those who already have terminations
             $employees = Employee::where('created_by', \Auth::user()->creatorId())
-                ->whereIn('id', $approvedResignedEmployeeIds)
-                ->whereNotIn('id', $terminatedEmployeeIds)
+                ->whereNotIn('id', $terminatedEmployeeIds ?: [0])
+                ->whereHas('user', function ($query) {
+                    $query->where('type', 'employee');
+                })
+                ->orderBy('name')
                 ->get()
                 ->mapWithKeys(function ($employee) {
                     return [$employee->id => $employee->full_name];
@@ -96,21 +89,7 @@ class TerminationController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $noticeDate = $request->notice_date;
-            if(empty($noticeDate))
-            {
-                $noticeDate = Resignation::where('created_by', \Auth::user()->creatorId())
-                    ->where('employee_id', $request->employee_id)
-                    ->where('status', 'approved')
-                    ->orderByDesc('approved_at')
-                    ->orderByDesc('id')
-                    ->value('notice_date');
-            }
-
-            if(empty($noticeDate))
-            {
-                $noticeDate = now()->toDateString();
-            }
+            $noticeDate = $request->notice_date ?: $request->termination_date;
 
             if(Carbon::parse($request->termination_date)->lt(Carbon::parse($noticeDate)))
             {

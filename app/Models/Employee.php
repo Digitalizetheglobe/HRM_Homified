@@ -110,6 +110,11 @@ class Employee extends Model
     return $this->belongsTo(User::class, 'approved_by');
 }
 
+    public function punchLocations()
+    {
+        return $this->belongsToMany(PunchLocation::class, 'employee_punch_location', 'employee_id', 'punch_location_id');
+    }
+
     public function project()
     {
         return $this->belongsTo(Project::class, 'site_id');

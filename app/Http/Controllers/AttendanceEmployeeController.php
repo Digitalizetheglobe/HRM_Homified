@@ -1047,15 +1047,39 @@ namespace App\Http\Controllers;
             }
         }
 
+        protected function leaveTypeIdForCode($code, $createdBy)
+        {
+            $titles = [
+                'EL' => ['Earned Leave', 'Paid Leave'],
+                'SL' => ['Sick Leave'],
+                'CO' => ['Comp-Off', 'Comp Off'],
+                'LOP' => ['Leave Without Pay', 'Loss of Pay', 'LOP'],
+            ];
+            $wanted = $titles[strtoupper((string) $code)] ?? null;
+            if (!$wanted || !$createdBy) {
+                return null;
+            }
+
+            $type = \App\Models\LeaveType::where('created_by', $createdBy)
+                ->where(function ($query) use ($wanted) {
+                    foreach ($wanted as $title) {
+                        $query->orWhereRaw('LOWER(title) = ?', [strtolower($title)]);
+                    }
+                })
+                ->first();
+
+            return $type ? (int) $type->id : null;
+        }
+
         protected function processLeaveTransition($employee, $date, $code)
         {
+            $leaveTypeId = $this->leaveTypeIdForCode($code, $employee->created_by);
+            if (!$leaveTypeId) {
+                return;
+            }
+
             AttendanceEmployee::where('employee_id', $employee->id)->where('date', $date)->delete();
             CompOffLeave::where('employees_id', $employee->id)->where('comp_off_date', $date)->delete();
-
-            $leaveTypeId = 6; 
-            if ($code === 'EL') $leaveTypeId = 2;
-            elseif ($code === 'SL') $leaveTypeId = 1;
-            elseif ($code === 'CO') $leaveTypeId = 4;
 
             $exists = LocalLeave::where('employee_id', $employee->id)
                 ->where('start_date', '<=', $date)
@@ -1161,6 +1185,22 @@ namespace App\Http\Controllers;
                         'success' => false,
                         'message' => 'Invalid location coordinates. Please try again.'
                     ], 400);
+                }
+
+                $employeeRecord = Auth::user()->employee;
+                if ($employeeRecord) {
+                    $employeeRecord->loadMissing('punchLocations');
+                    $blockMessage = \App\Models\PunchLocation::punchInBlockMessage(
+                        $employeeRecord,
+                        (float) $latitude,
+                        (float) $longitude
+                    );
+                    if ($blockMessage) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $blockMessage
+                        ], 403);
+                    }
                 }
 
                 $attendance = new AttendanceEmployee();
@@ -1902,6 +1942,34 @@ namespace App\Http\Controllers;
                             }
                         }
 
+                        $monthStart = \Carbon\Carbon::create($currentYear, $currentMonth, 1)->startOfMonth()->toDateString();
+                        $monthEnd = \Carbon\Carbon::create($currentYear, $currentMonth, 1)->endOfMonth()->toDateString();
+                        $statusAudits = \App\Models\AttendanceAudit::with('modifier:id,name')
+                            ->where('employee_id', $employee->id)
+                            ->whereBetween('date', [$monthStart, $monthEnd])
+                            ->orderBy('id')
+                            ->get()
+                            ->groupBy(function ($audit) {
+                                return \Carbon\Carbon::parse($audit->date)->format('Y-m-d');
+                            });
+
+                        foreach ($statusAudits as $auditDate => $rows) {
+                            if (!isset($employeeData[$auditDate])) {
+                                continue;
+                            }
+                            $employeeData[$auditDate]['status_history'] = $rows->map(function ($row) {
+                                return [
+                                    'from' => $this->auditStatusLabel($row->previous_status),
+                                    'to' => $this->auditStatusLabel($row->new_status),
+                                    'remark' => trim((string) $row->remark),
+                                    'by' => optional($row->modifier)->name ?: '',
+                                    'at' => $row->created_at
+                                        ? $row->created_at->timezone('Asia/Kolkata')->format('d M, h:i A')
+                                        : '',
+                                ];
+                            })->values()->all();
+                        }
+
                         // Sort data by date
                         ksort($employeeData);
 
@@ -2502,7 +2570,7 @@ namespace App\Http\Controllers;
                 ->where('status', 'Approved')
                 ->first();
 
-            if (!$leave) return null;
+            if (!$leave || !$leave->leaveType) return null;
 
             $typeTitle = strtolower(trim($leave->leaveType->title ?? ''));
             if ($typeTitle === 'comp-off' || str_contains($typeTitle, 'comp')) return 'CO';
@@ -2639,6 +2707,24 @@ namespace App\Http\Controllers;
             }
         }
 
+        protected function auditStatusLabel($status)
+        {
+            $status = trim((string) $status);
+            $labels = [
+                'EL' => 'Paid Leave',
+                'SL' => 'Sick Leave',
+                'CO' => 'Comp-Off',
+                'LOP' => 'Absent',
+                'P' => 'Present',
+                'A' => 'Absent',
+                'HD' => 'Half Day',
+                'SP' => 'Single Punch In',
+                'WO' => 'Week Off',
+            ];
+
+            return $labels[$status] ?? ($status !== '' ? $status : '—');
+        }
+
         public function updateCalendarAttendance(Request $request)
         {
             if (\Auth::user()->type == 'company' || \Auth::user()->type == 'super admin' || \Auth::user()->can('attendance.calendar.update.all')) {
@@ -2648,6 +2734,7 @@ namespace App\Http\Controllers;
                         'employee_id' => 'required',
                         'date' => 'required|date',
                         'status' => 'required',
+                        'remark' => 'nullable|string|max:1000',
                     ]
                 );
 
@@ -2699,10 +2786,10 @@ namespace App\Http\Controllers;
 
                 // If applying a new leave that wasn't there before
                 if ($isNewLeave && $currentLeaveCode !== $statusCode) {
-                    $leaveTypeId = 6; 
-                    if ($statusCode === 'EL') $leaveTypeId = 2;
-                    elseif ($statusCode === 'SL') $leaveTypeId = 1;
-                    elseif ($statusCode === 'CO') $leaveTypeId = 4;
+                    $leaveTypeId = $this->leaveTypeIdForCode($statusCode, $employee->created_by);
+                    if (!$leaveTypeId) {
+                        return response()->json(['error' => __('Leave type not found for this company.')]);
+                    }
 
                     if (in_array($statusCode, ['EL', 'SL'], true) && !$employee->isEligibleForPaidLeave($request->date)) {
                         return response()->json(['error' => __('Paid leave starts after 6 months from joining. Use LOP until then.')]);
@@ -2744,10 +2831,7 @@ namespace App\Http\Controllers;
 
                 // If removing a leave (transitioning to Present/Absent or a DIFFERENT leave)
                 if ($isOldLeave && $currentLeaveCode !== $statusCode) {
-                    $oldLeaveTypeId = 6;
-                    if ($currentLeaveCode === 'EL') $oldLeaveTypeId = 2;
-                    elseif ($currentLeaveCode === 'SL') $oldLeaveTypeId = 1;
-                    elseif ($currentLeaveCode === 'CO') $oldLeaveTypeId = 4;
+                    $oldLeaveTypeId = $this->leaveTypeIdForCode($currentLeaveCode, $employee->created_by);
 
                     // Find the single-day leave block to restore (if it's multi-day, this might be tricky, but calendar edits typically only affect single days)
                     $oldLeave = \App\Models\Leave::where('employee_id', $employee->id)
@@ -2757,8 +2841,7 @@ namespace App\Http\Controllers;
                         ->first();
                         
                     if ($oldLeave) {
-                        // Restore balance (only for regular leaves, CO is virtual based on rows)
-                        if ($oldLeaveTypeId !== 4 && $oldLeaveTypeId !== 6) { // Don't restore LOP (6) as it doesn't use balance
+                        if (in_array($currentLeaveCode, ['EL', 'SL'], true) && $oldLeaveTypeId) {
                             \App\Services\LeaveLedgerService::restoreRegularLeaveBalance($employee->id, $oldLeaveTypeId, 1.0);
                         }
                         // Delete it here to prevent applyAttendanceTransition from indiscriminately deleting a multi-day block without restoration
@@ -2779,6 +2862,7 @@ namespace App\Http\Controllers;
                     'date' => $date,
                     'previous_status' => $previousStatus,
                     'new_status' => $newStatus,
+                    'remark' => trim((string) $request->remark) ?: null,
                     'modified_by' => \Auth::user()->id
                 ]);
 

@@ -3,6 +3,7 @@
     namespace App\Http\Controllers;
 
     use App\Models\Branch;
+    use App\Models\PunchLocation;
     use App\Models\Site;
     use App\Models\Department;
     use App\Models\Designation;
@@ -136,9 +137,10 @@
                 $designations->prepend('Select Designation', '');
                 $employees        = User::where('created_by', \Auth::user()->creatorId())->get();
                 $employeesId      = \Auth::user()->employeeIdFormat($this->employeeNumber());
+                $punchLocations   = PunchLocation::where('created_by', \Auth::user()->creatorId())->orderBy('name')->get();
 
 
-                return view('employee.create', compact('employees', 'employeesId', 'departments', 'designations', 'documents', 'branches', 'company_settings'));
+                return view('employee.create', compact('employees', 'employeesId', 'departments', 'designations', 'documents', 'branches', 'company_settings', 'punchLocations'));
             } else {
                 return redirect()->back()->with('error', __('Permission denied.'));
             }
@@ -281,6 +283,8 @@
                     'created_by' => \Auth::user()->creatorId(),
                 ]);
 
+                $this->syncPunchLocations($employee, $request);
+
                 // Load relationships for email
                 $employee->load(['branch', 'department', 'designation']);
 
@@ -351,7 +355,7 @@
         {
             try {
                 $employeeId = Crypt::decrypt($id);
-                $employee = Employee::with(['branch', 'department', 'designation', 'documents.document'])
+                $employee = Employee::with(['branch', 'department', 'designation', 'documents.document', 'punchLocations'])
                     ->findOrFail($employeeId);
 
                 if (!\Auth::user()->can('employee.edit.all') && !\Auth::user()->isHR() && !(\Auth::user()->can('employee.profile.edit.own') && \Auth::user()->id == $employee->user_id)) {
@@ -399,6 +403,7 @@
                 $documents = Document::where('created_by', \Auth::user()->creatorId())->get();
                 $companyPolicy = CompanyPolicy::where('created_by', \Auth::user()->creatorId())->get();
                 $policyAcknowledgements = PolicyAcknowledgement::where('employee_id', $employee->id)->get()->keyBy('company_policy_id');
+                $punchLocations = PunchLocation::where('created_by', \Auth::user()->creatorId())->orderBy('name')->get();
 
                 return view('employee.edit', compact(
                     'employee',
@@ -409,7 +414,8 @@
                     'experiences',
                     'educations',
                     'companyPolicy',
-                    'policyAcknowledgements'
+                    'policyAcknowledgements',
+                    'punchLocations'
                 ));
 
             } catch (\Exception $e) {
@@ -597,6 +603,7 @@
                 }
 
                 $employee->update($data);
+                $this->syncPunchLocations($employee, $request);
 
                 if (\Auth::user()->hasRole('employee')) {
                     return redirect()->route('employee.show', Crypt::encrypt($employee->id))
@@ -658,10 +665,10 @@
                 return redirect()->back()->with('error', __('Employee not available'));
             }
 
-            $employee = Employee::with(['branch', 'department', 'designation', 'user'])->find($empId);
+            $employee = Employee::with(['branch', 'department', 'designation', 'user', 'punchLocations'])->find($empId);
             
             if (!$employee) {
-                $employee = Employee::where('user_id', $empId)->with(['branch', 'department', 'designation', 'user'])->first();
+                $employee = Employee::where('user_id', $empId)->with(['branch', 'department', 'designation', 'user', 'punchLocations'])->first();
             }
 
             if (!$employee) {
@@ -707,6 +714,29 @@
             }
 
             return $latest->id + 1;
+        }
+
+        protected function syncPunchLocations(Employee $employee, Request $request): void
+        {
+            $user = \Auth::user();
+            $canAssign = $user->hasCompanyAccess() || $user->isHR() || $user->can('employee.edit.all') || $user->can('Create Employee');
+            if (!$canAssign || !$request->has('punch_locations_present')) {
+                return;
+            }
+
+            $ids = collect($request->input('punch_location_ids', []))
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $validIds = PunchLocation::where('created_by', $user->creatorId())
+                ->whereIn('id', $ids)
+                ->pluck('id')
+                ->all();
+
+            $employee->punchLocations()->sync($validIds);
         }
 
         public function exportModal()

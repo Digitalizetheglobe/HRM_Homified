@@ -15,6 +15,13 @@
             </a>
         @endcan
 
+        @if (\Auth::user()->hasCompanyAccess() || \Auth::user()->isHR() || \Auth::user()->can('Manage Punch Location'))
+            <a href="{{ route('punchlocation.index') }}"
+                class="list-group-item list-group-item-action border-0 {{ request()->is('punchlocation*') ? 'active' : '' }}">{{ __('Punch Locations') }}
+                <div class="float-end"><i class="ti ti-chevron-right"></i></div>
+            </a>
+        @endif
+
         <!-- @can('Manage Branch')
             <a href="{{ route('site.index') }}"
                 class="list-group-item list-group-item-action border-0 {{ request()->is('site*') ? 'active' : '' }}">{{ __('Site') }}
