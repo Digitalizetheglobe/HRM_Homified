@@ -550,6 +550,13 @@
                     $data['rejection_reason'] = null;
                 }
 
+                // Keep the login name the same as the employee name.
+                $user = User::find($employee->user_id);
+                if ($user && $fullName !== '') {
+                    $user->name = $fullName;
+                    $user->save();
+                }
+
                 // ✅ Handle email update - only company users can change email
                 if (\Auth::user()->type !== 'employee' && $request->has('email')) {
                     $data['email'] = $request['email'];

@@ -41,7 +41,7 @@
 
             @if (\Auth::user()->type == 'employee')
                 <div class="col-12 mb-4">
-                    <h3 class="mb-0">{{ __('Welcome') }}, {{ Auth::user()->name }}</h3>
+                    <h3 class="mb-0">{{ __('Welcome') }}, {{ !empty($emp) ? $emp->full_name : Auth::user()->name }}</h3>
                 </div>
                 <div class="col-xxl-9">
                     <div class="row">
